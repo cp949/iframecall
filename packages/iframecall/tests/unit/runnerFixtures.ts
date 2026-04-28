@@ -75,6 +75,11 @@ export function createDeviceCommandsClass() {
       return "hidden";
     }
 
+    // `$` prefix는 라이브러리 점유 namespace로 dispatch 대상에서 제외한다.
+    async $probe(): Promise<string> {
+      return "should-not-dispatch";
+    }
+
     static async onStatic(): Promise<string> {
       return "static";
     }

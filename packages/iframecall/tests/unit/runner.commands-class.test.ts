@@ -1,6 +1,6 @@
 /**
  * runner의 Commands class API와 command collection 규칙을 검증한다.
- * prototype-only dispatch, this binding, 예약 command 제외, runtime option guard를 확인한다.
+ * prototype-only dispatch, this binding, 예약 command 제외(`_`/`$` prefix 포함), runtime option guard를 확인한다.
  */
 import { describe, expect, it } from "vitest";
 import type { IframeHelper } from "../../src/core/types.ts";
@@ -95,12 +95,13 @@ describe("검증: runner Commands class API", () => {
     await expect(controller.call("readState", [])).resolves.toBe("ready");
   });
 
-  it("동작: instance field 함수, _ prefix, accessor, static, symbol-keyed, host:dispose는 command_not_found가 된다", async () => {
+  it("동작: instance field 함수, _ prefix, $ prefix, accessor, static, symbol-keyed, host:dispose는 command_not_found가 된다", async () => {
     const { host, iframe } = createLinkedTransports();
     const controller = createIframeCallController<
       DeviceCommands & {
         onInstance: () => Promise<string>;
         _hidden: () => Promise<string>;
+        $probe: () => Promise<string>;
         onGetter: () => Promise<number>;
         onStatic: () => Promise<string>;
         "host:dispose": () => Promise<void>;
@@ -125,6 +126,7 @@ describe("검증: runner Commands class API", () => {
     for (const hidden of [
       "onInstance",
       "_hidden",
+      "$probe",
       "onGetter",
       "onStatic",
     ] as const) {

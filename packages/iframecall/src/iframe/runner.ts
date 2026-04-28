@@ -31,6 +31,17 @@ import type {
 const RESERVED_COMMAND_NAMES = new Set<string>(["constructor", "host:dispose"]);
 
 /**
+ * Commands class가 prototype에 둘 수 있는 wrap hook 시그니처.
+ * `$onCommandRun(cmd, args, invoke)`로 노출되며 매 command dispatch 직전에 호출된다.
+ * 사용자가 `await invoke()`를 try/finally로 감싸 status 토글이나 로깅을 일괄 처리할 때 쓴다.
+ */
+type CommandRunHook = (
+  cmd: string,
+  args: readonly unknown[],
+  invoke: () => Promise<unknown>,
+) => unknown | Promise<unknown>;
+
+/**
  * iframecall iframe runner를 생성한다.
  * `{ Commands }` class 옵션을 받아 dispatch lookup을 만들고,
  * 도메인 코드가 host로 notify를 보낼 수 있는 helper를 함께 노출한다.
@@ -92,7 +103,7 @@ export function createIframeCallRunner<
   const iframeHelper =
     helperInternal as unknown as IframeHelper<TNotificationsToHost>;
 
-  const { commands, dispatch } = resolveCommandSource<
+  const { commands, dispatch, commandRunHook } = resolveCommandSource<
     TCommands,
     TNotificationsToHost
   >(options, iframeHelper);
@@ -189,7 +200,10 @@ export function createIframeCallRunner<
     }
 
     try {
-      const value = await handler(...args);
+      const invoke = (): Promise<unknown> => Promise.resolve(handler(...args));
+      const value = commandRunHook
+        ? await commandRunHook(cmd, args, invoke)
+        : await invoke();
       // await 이후에도 dispose 여부를 재확인한다.
       if (disposing || disposed) return;
       safePost(createIframeCallSuccessResponse(id, value));
@@ -255,6 +269,7 @@ function resolveCommandSource<
 ): {
   readonly commands: TCommands;
   readonly dispatch: (cmd: string) => CommandHandler | undefined;
+  readonly commandRunHook: CommandRunHook | undefined;
 } {
   const rawOptions = options as {
     readonly Commands?: CommandsConstructor<TCommands, TNotificationsToHost>;
@@ -284,12 +299,14 @@ function resolveCommandSource<
   // dispatch 호출마다 클로저를 새로 만들지 않도록 prototype command를 instance에 바인딩한 채 캐시한다.
   // invariant 필터링은 캐시 빌드 시점 한 번만 수행되고, 이후 dispatch는 Map lookup으로만 동작한다.
   const handlerCache = buildPrototypeCommandHandlers(instance);
+  const commandRunHook = resolveCommandRunHook(instance);
 
   return {
     commands: instance,
     dispatch(cmd: string) {
       return handlerCache.get(cmd);
     },
+    commandRunHook,
   };
 }
 
@@ -299,7 +316,7 @@ function resolveCommandSource<
  * 호출당 새 클로저가 만들어지지 않는다.
  *
  * 제외 대상은 기존과 동일하다.
- * - `host:dispose` 등 RESERVED_COMMAND_NAMES, `_` prefix, symbol key
+ * - `host:dispose` 등 RESERVED_COMMAND_NAMES, `_` prefix(사용자 private), `$` prefix(라이브러리 namespace), symbol key
  * - accessor(get/set), instance field에 할당된 함수
  * - static method는 constructor에 있어 prototype chain 순회에서 자연히 접근되지 않는다.
  *
@@ -318,6 +335,9 @@ function buildPrototypeCommandHandlers(
       if (typeof key !== "string") continue;
       if (RESERVED_COMMAND_NAMES.has(key)) continue;
       if (key.startsWith("_")) continue;
+      // `$` prefix는 라이브러리 점유 namespace로 사용자 dispatch 대상에서 제외한다.
+      // (예: `$onCommandRun` wrap hook). 사용자 `_` private과 의도적으로 구분한다.
+      if (key.startsWith("$")) continue;
       // 더 가까운 prototype에서 이미 채운 항목은 덮어쓰지 않아 method 해상도 순서를 보존한다.
       if (handlers.has(key)) continue;
 
@@ -336,6 +356,25 @@ function buildPrototypeCommandHandlers(
   }
 
   return handlers;
+}
+
+/**
+ * Commands 인스턴스의 prototype chain에서 `$onCommandRun` wrap hook을 한 번만 찾아
+ * instance에 bind한 채 반환한다. 정의되지 않았거나 함수가 아니면 undefined를 돌려준다.
+ *
+ * 가까운 prototype부터 순회하므로 상속 클래스가 hook을 override하면 자식 정의가 우선한다.
+ */
+function resolveCommandRunHook(instance: object): CommandRunHook | undefined {
+  let proto: object | null = Object.getPrototypeOf(instance);
+  while (proto !== null && proto !== Object.prototype) {
+    const descriptor = Object.getOwnPropertyDescriptor(proto, "$onCommandRun");
+    if (descriptor !== undefined && typeof descriptor.value === "function") {
+      const hook = descriptor.value as CommandRunHook;
+      return hook.bind(instance) as CommandRunHook;
+    }
+    proto = Object.getPrototypeOf(proto);
+  }
+  return undefined;
 }
 
 /**
