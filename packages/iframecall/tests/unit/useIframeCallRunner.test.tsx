@@ -60,7 +60,7 @@ describe("useIframeCallRunner", () => {
     debugSpy.mockRestore();
   });
 
-  it("mount 시 runner와 commands가 생성되고 isActive가 true가 된다", () => {
+  it("mount 시 commands와 iframeHelper가 노출되고 isActive가 true가 된다", () => {
     const { iframe } = createLinkedTransports();
     const BasicCommands = createBasicRunnerCommandsClass();
     const results: Array<ReturnType<typeof useIframeCallRunner<TestCommands>>> =
@@ -77,18 +77,17 @@ describe("useIframeCallRunner", () => {
     const last = results[results.length - 1];
     if (last === undefined) throw new Error("결과가 없다");
     expect(last.isActive).toBe(true);
-    expect(last.commands).not.toBeUndefined();
-    expect(last.iframeHelper).not.toBeUndefined();
-    expect(last.runner).not.toBeUndefined();
+    expect(last.commands).not.toBeNull();
+    expect(last.iframeHelper).not.toBeNull();
   });
 
-  it("unmount 시 dispose가 react_unmount reason으로 호출된다", () => {
+  it("동작: commands는 Commands class의 인스턴스 reference를 그대로 노출한다", () => {
     const { iframe } = createLinkedTransports();
     const BasicCommands = createBasicRunnerCommandsClass();
     const results: Array<ReturnType<typeof useIframeCallRunner<TestCommands>>> =
       [];
 
-    const { unmount } = render(
+    render(
       <HookHarness
         onResult={(r) => results.push(r)}
         Commands={BasicCommands as never}
@@ -98,22 +97,35 @@ describe("useIframeCallRunner", () => {
 
     const last = results[results.length - 1];
     if (last === undefined) throw new Error("결과가 없다");
-    if (last.runner === undefined) throw new Error("runner가 없다");
-    const disposeSpy = vi.spyOn(last.runner, "dispose");
-
-    unmount();
-    expect(disposeSpy).toHaveBeenCalledWith("react_unmount");
+    if (last.commands === null) throw new Error("commands가 없다");
+    // Commands class의 prototype method가 그대로 instance에 남아 있어야 도메인 코드가 직접 호출할 수 있다.
+    expect(last.commands).toBeInstanceOf(BasicCommands);
+    expect(typeof last.commands.sum).toBe("function");
   });
 
-  it("rerender 시 runner가 재생성되지 않는다", () => {
+  it("unmount 시 transport subscription이 정리되어 listener가 0이 된다", () => {
     const { iframe } = createLinkedTransports();
     const BasicCommands = createBasicRunnerCommandsClass();
-    // mount 후 정의된 runner 참조만 수집한다. 첫 render는 effect 전이라 undefined일 수 있다.
-    const definedRunners: Array<
-      NonNullable<
-        ReturnType<typeof useIframeCallRunner<TestCommands>>["runner"]
-      >
-    > = [];
+
+    const { unmount } = render(
+      <HookHarness
+        onResult={() => {}}
+        Commands={BasicCommands as never}
+        transport={iframe}
+      />,
+    );
+
+    expect(iframe.getListenerCount()).toBe(1);
+    unmount();
+    // dispose("react_unmount") 호출이 transport unsubscribe로 이어지는지 부수효과로 확인한다.
+    expect(iframe.getListenerCount()).toBe(0);
+  });
+
+  it("rerender 시 commands instance가 재생성되지 않는다", () => {
+    const { iframe } = createLinkedTransports();
+    const BasicCommands = createBasicRunnerCommandsClass();
+    // mount 후 정의된 commands 참조만 수집한다. 첫 render는 effect 전이라 null일 수 있다.
+    const definedCommands: TestCommands[] = [];
 
     function TrackedHarness() {
       const result = useIframeCallRunner<TestCommands>({
@@ -122,8 +134,8 @@ describe("useIframeCallRunner", () => {
         transport: iframe,
       });
       useEffect(() => {
-        if (result.runner !== undefined) {
-          definedRunners.push(result.runner);
+        if (result.commands !== null) {
+          definedCommands.push(result.commands);
         }
       });
       return null;
@@ -132,10 +144,10 @@ describe("useIframeCallRunner", () => {
     const { rerender } = render(<TrackedHarness />);
     rerender(<TrackedHarness />);
 
-    // mount 후 수집된 runner 참조가 모두 동일한 인스턴스여야 한다.
-    expect(definedRunners.length).toBeGreaterThanOrEqual(1);
-    const first = definedRunners[0];
-    const last = definedRunners[definedRunners.length - 1];
+    // mount 후 수집된 commands 참조가 모두 동일한 인스턴스여야 runner가 재생성되지 않은 것이다.
+    expect(definedCommands.length).toBeGreaterThanOrEqual(1);
+    const first = definedCommands[0];
+    const last = definedCommands[definedCommands.length - 1];
     expect(first).toBe(last);
   });
 
@@ -160,7 +172,7 @@ describe("useIframeCallRunner", () => {
     const last = results[results.length - 1];
     if (last === undefined) throw new Error("결과가 없다");
     expect(last.isActive).toBe(true);
-    expect(last.commands).not.toBeUndefined();
+    expect(last.commands).not.toBeNull();
   });
 
   it("debugLog: true이면 command 수신 시 console.debug가 호출된다", async () => {

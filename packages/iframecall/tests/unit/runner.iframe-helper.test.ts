@@ -17,7 +17,7 @@ import {
 } from "./runnerFixtures.ts";
 import { createLinkedTransports } from "./testTransport.ts";
 
-describe("검증: iframeHelper sendNotificationToHost와 sendReadyToHost", () => {
+describe("검증: iframeHelper sendNotificationToHost와 sendLifecycleReady", () => {
   it("동작: sendNotificationToHost는 도메인 notify를 host로 흘려보낸다", () => {
     const { host, iframe } = createLinkedTransports();
     const received: { event: string; payload: unknown }[] = [];
@@ -53,7 +53,7 @@ describe("검증: iframeHelper sendNotificationToHost와 sendReadyToHost", () =>
     ]);
   });
 
-  it("동작: sendReadyToHost는 protocolVersion이 1로 고정된 ready notify를 보낸다", () => {
+  it("동작: sendLifecycleReady는 protocolVersion이 1로 고정된 ready notify를 보낸다", () => {
     const { host, iframe } = createLinkedTransports();
     const readyPayloads: unknown[] = [];
 
@@ -74,8 +74,8 @@ describe("검증: iframeHelper sendNotificationToHost와 sendReadyToHost", () =>
       Commands: DeviceCommandsImpl,
     });
 
-    runner.iframeHelper.sendReadyToHost();
-    runner.sendReadyToHost();
+    runner.iframeHelper.sendLifecycleReady();
+    runner.sendLifecycleReady();
 
     expect(readyPayloads).toEqual([
       { protocolVersion: 1 },
@@ -117,7 +117,7 @@ describe("검증: iframeHelper debug subscription", () => {
     runner.iframeHelper.debug.subscribe((event) => {
       events.push(event);
     });
-    runner.sendReadyToHost();
+    runner.sendLifecycleReady();
 
     await expect(controller.call("echo", ["hi"])).resolves.toBe("hi");
 
@@ -160,7 +160,7 @@ describe("검증: iframeHelper debug subscription", () => {
     runner.iframeHelper.debug.subscribe((event) => {
       events.push(event);
     });
-    runner.sendReadyToHost();
+    runner.sendLifecycleReady();
 
     await expect(controller.call("fail", [])).rejects.toBeDefined();
 
@@ -198,7 +198,7 @@ describe("검증: iframeHelper debug subscription", () => {
     runner.iframeHelper.debug.subscribe((event) => {
       events.push(event);
     });
-    runner.sendReadyToHost();
+    runner.sendLifecycleReady();
 
     await expect(controller.call("unknown", [])).rejects.toMatchObject({
       code: "command_not_found",

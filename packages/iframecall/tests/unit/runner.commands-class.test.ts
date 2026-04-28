@@ -67,7 +67,7 @@ describe("검증: runner Commands class API", () => {
     expect(commandsRecord.iframeHelper).toBe(runner.iframeHelper);
     // sendNotificationToHost helper와 runner handle은 동일 동작을 노출한다.
     expect(typeof runner.sendNotificationToHost).toBe("function");
-    expect(typeof runner.sendReadyToHost).toBe("function");
+    expect(typeof runner.sendLifecycleReady).toBe("function");
   });
 
   it("동작: prototype method를 host command로 dispatch하며 this binding을 유지한다", async () => {
@@ -87,7 +87,7 @@ describe("검증: runner Commands class API", () => {
       transport: iframe,
       Commands: DeviceCommandsImpl,
     });
-    runner.sendReadyToHost();
+    runner.sendLifecycleReady();
 
     await expect(controller.call("ping", [])).resolves.toBe("pong");
     await expect(controller.call("echo", ["hi"])).resolves.toBe("hi");
@@ -119,7 +119,7 @@ describe("검증: runner Commands class API", () => {
       transport: iframe,
       Commands: DeviceCommandsImpl,
     });
-    runner.sendReadyToHost();
+    runner.sendLifecycleReady();
     await controller.ready;
 
     for (const hidden of [
@@ -211,7 +211,7 @@ describe("검증: runner Commands class API", () => {
       transport: iframe,
       Commands: DeviceCommandsImpl,
     });
-    runner.sendReadyToHost();
+    runner.sendLifecycleReady();
     await controller.ready;
 
     // runner.commands 인스턴스에 symbol key가 없어야 command dispatch 대상에서 제외된다.

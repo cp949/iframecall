@@ -6,37 +6,74 @@ import { useIframeCallRunner } from "@cp949/iframecall/iframe";
 import type React from "react";
 import { useEffect, useState } from "react";
 
+type RunningStatus = "idle" | "processing";
+
 type DemoCommands = {
   greet(name: string): Promise<string>;
   add(a: number, b: number): Promise<number>;
   delay(ms: number): Promise<void>;
 };
 
+// host에 노출되는 remote command와 별도로, iframe 내부에서 직접 호출하는 lifecycle/local API를 함께 잡는다.
+type DemoCommandsLocal = DemoCommands & {
+  start(): void;
+  updateRunningStatus(status: RunningStatus): void;
+  onStatusChange(fn: (s: RunningStatus) => void): () => void;
+};
+
 type DemoEvents = {
-  "status-changed": string;
+  "status-changed": RunningStatus;
 };
 
 class DemoCommandsImpl {
+  private status: RunningStatus = "idle";
+  private listeners = new Set<(s: RunningStatus) => void>();
+
   constructor(private iframeHelper: IframeHelper<DemoEvents>) {}
 
+  start(): void {
+    this.iframeHelper.sendLifecycleReady();
+  }
+
+  updateRunningStatus(next: RunningStatus): void {
+    if (this.status === next) return;
+    this.status = next;
+    this.iframeHelper.sendNotificationToHost("status-changed", next);
+    for (const fn of this.listeners) fn(next);
+  }
+
+  onStatusChange(fn: (s: RunningStatus) => void): () => void {
+    this.listeners.add(fn);
+    return () => {
+      this.listeners.delete(fn);
+    };
+  }
+
   async greet(name: string): Promise<string> {
-    this.iframeHelper.sendNotificationToHost("status-changed", "processing");
-    const result = `Hello, ${name}!`;
-    this.iframeHelper.sendNotificationToHost("status-changed", "idle");
-    return result;
+    this.updateRunningStatus("processing");
+    try {
+      return `Hello, ${name}!`;
+    } finally {
+      this.updateRunningStatus("idle");
+    }
   }
 
   async add(a: number, b: number): Promise<number> {
-    this.iframeHelper.sendNotificationToHost("status-changed", "processing");
-    const result = a + b;
-    this.iframeHelper.sendNotificationToHost("status-changed", "idle");
-    return result;
+    this.updateRunningStatus("processing");
+    try {
+      return a + b;
+    } finally {
+      this.updateRunningStatus("idle");
+    }
   }
 
   async delay(ms: number): Promise<void> {
-    this.iframeHelper.sendNotificationToHost("status-changed", "processing");
-    await new Promise<void>((resolve) => setTimeout(resolve, ms));
-    this.iframeHelper.sendNotificationToHost("status-changed", "idle");
+    this.updateRunningStatus("processing");
+    try {
+      await new Promise<void>((resolve) => setTimeout(resolve, ms));
+    } finally {
+      this.updateRunningStatus("idle");
+    }
   }
 }
 
@@ -72,8 +109,8 @@ const HOST_ORIGIN = "http://localhost:3300";
 export default function IframePage(): React.JSX.Element {
   const [logs, setLogs] = useState<LogEntry[]>([]);
 
-  const { iframeHelper, isActive } = useIframeCallRunner<
-    DemoCommands,
+  const { iframeHelper, commands, isActive } = useIframeCallRunner<
+    DemoCommandsLocal,
     DemoEvents
   >({
     targetOrigin: HOST_ORIGIN,
@@ -83,17 +120,22 @@ export default function IframePage(): React.JSX.Element {
   });
 
   useEffect(() => {
-    if (!iframeHelper) return;
+    if (!iframeHelper || !commands) return;
 
-    iframeHelper.sendNotificationToHost("status-changed", "ready");
-    iframeHelper.sendReadyToHost();
+    commands.start();
 
-    const unsubscribe = iframeHelper.debug.subscribe((ev) => {
+    const offStatus = commands.onStatusChange((s) => {
+      setLogs((prev) => [...prev, makeEntry(`local status: ${s}`)]);
+    });
+    const offDebug = iframeHelper.debug.subscribe((ev) => {
       setLogs((prev) => [...prev, makeEntry(formatDebugEvent(ev))]);
     });
 
-    return unsubscribe;
-  }, [iframeHelper]);
+    return () => {
+      offStatus();
+      offDebug();
+    };
+  }, [iframeHelper, commands]);
 
   return (
     <div style={{ padding: 16 }}>

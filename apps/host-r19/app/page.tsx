@@ -13,7 +13,7 @@ type DemoCommands = {
 };
 
 type DemoEvents = {
-  "status-changed": string;
+  "status-changed": "idle" | "processing";
 };
 
 type LogEntry = { id: number; time: string; text: string };

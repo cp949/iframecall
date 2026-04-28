@@ -75,7 +75,7 @@ export function createIframeCallRunner<
       safePost(createIframeCallNotify(event, payload));
       emitDebug({ type: "notificationSentToHost", event, payload });
     },
-    sendReadyToHost(): void {
+    sendLifecycleReady(): void {
       if (disposing || disposed) return;
       // ready payload는 라이브러리가 protocolVersion을 고정한다.
       safePost(createIframeCallNotify("ready", { protocolVersion: 1 }));
@@ -216,8 +216,8 @@ export function createIframeCallRunner<
     commands,
     iframeHelper,
     sendNotificationToHost: sendNotificationToHostUntyped,
-    sendReadyToHost(): void {
-      iframeHelper.sendReadyToHost();
+    sendLifecycleReady(): void {
+      iframeHelper.sendLifecycleReady();
     },
     terminated(reason: string, error?: SerializedIframeCallError): void {
       if (disposing || disposed) return;

@@ -48,22 +48,19 @@ export type UseIframeCallRunnerOptions<
 
 /**
  * useIframeCallRunner가 반환하는 handle.
- * mount 전에는 모든 값이 undefined / false이며, mount 후 runner가 생성되면 채워진다.
+ * mount 전에는 commands/iframeHelper가 null이며, mount 후 runner가 생성되면 채워진다.
+ * runner handle 전체는 더 이상 노출하지 않고 도메인 코드가 필요로 하는
+ * commands 인스턴스와 iframeHelper만 외부로 흘려보낸다.
  */
 export type UseIframeCallRunnerResult<
   TCommands,
   TNotificationsToHost = Record<string, unknown>,
 > = {
-  /** runner가 생성한 Commands 인스턴스. mount 전 undefined. */
-  readonly commands: TCommands | undefined;
+  /** runner가 생성한 Commands 인스턴스. mount 전 null. */
+  readonly commands: TCommands | null;
 
-  /** Commands constructor에 주입된 iframeHelper. mount 전 undefined. */
-  readonly iframeHelper: IframeHelper<TNotificationsToHost> | undefined;
-
-  /** runner handle 전체. mount 전 undefined. */
-  readonly runner:
-    | IframeCallRunnerHandle<TCommands, TNotificationsToHost>
-    | undefined;
+  /** Commands constructor에 주입된 iframeHelper. mount 전 null. */
+  readonly iframeHelper: IframeHelper<TNotificationsToHost> | null;
 
   /** runner가 활성화되어 있으면 true. mount 전 false. */
   readonly isActive: boolean;
@@ -141,9 +138,8 @@ export function useIframeCallRunner<
   const runner = runnerRef.current;
 
   return {
-    commands: runner?.commands,
-    iframeHelper: runner?.iframeHelper,
-    runner: runner ?? undefined,
+    commands: runner?.commands ?? null,
+    iframeHelper: runner?.iframeHelper ?? null,
     isActive,
   };
 }

@@ -48,9 +48,11 @@ type DemoCommands = {
 };
 
 type DemoEvents = {
-  "status-changed": string;
+  "status-changed": "idle" | "processing";
 };
 ```
+
+> 라이프사이클(`ready` / `terminated`)과 도메인 알림은 채널을 분리한다. 도메인 페이로드에 `"ready"`를 넣지 않는다 — `ready`는 transport가 살아 있다는 라이프사이클 신호 전용이다.
 
 > 별도 공유 패키지 없이 양쪽에 같은 타입을 두는 패턴을 권장한다. 모노레포라면 공통 패키지로 빼도 된다.
 
@@ -117,14 +119,46 @@ import { useEffect } from "react";
 
 const HOST_ORIGIN = "https://host.example.com";
 
+type RunningStatus = "idle" | "processing";
+
+// host에 노출할 remote command와 별도로, iframe 내부에서 직접 호출하는 lifecycle/local API를 함께 잡는다.
+type DemoCommandsLocal = DemoCommands & {
+  start(): void;
+  updateRunningStatus(status: RunningStatus): void;
+  onStatusChange(fn: (s: RunningStatus) => void): () => void;
+};
+
 class DemoCommandsImpl {
+  private status: RunningStatus = "idle";
+  private listeners = new Set<(s: RunningStatus) => void>();
+
   constructor(private iframeHelper: IframeHelper<DemoEvents>) {}
 
+  start(): void {
+    this.iframeHelper.sendLifecycleReady();
+  }
+
+  updateRunningStatus(next: RunningStatus): void {
+    if (this.status === next) return;
+    this.status = next;
+    this.iframeHelper.sendNotificationToHost("status-changed", next);
+    for (const fn of this.listeners) fn(next);
+  }
+
+  onStatusChange(fn: (s: RunningStatus) => void): () => void {
+    this.listeners.add(fn);
+    return () => {
+      this.listeners.delete(fn);
+    };
+  }
+
   async greet(name: string): Promise<string> {
-    this.iframeHelper.sendNotificationToHost("status-changed", "processing");
-    const result = `Hello, ${name}!`;
-    this.iframeHelper.sendNotificationToHost("status-changed", "idle");
-    return result;
+    this.updateRunningStatus("processing");
+    try {
+      return `Hello, ${name}!`;
+    } finally {
+      this.updateRunningStatus("idle");
+    }
   }
 
   async add(a: number, b: number): Promise<number> {
@@ -132,13 +166,13 @@ class DemoCommandsImpl {
   }
 
   async delay(ms: number): Promise<void> {
-    await new Promise((resolve) => setTimeout(resolve, ms));
+    await new Promise<void>((resolve) => setTimeout(resolve, ms));
   }
 }
 
 export function IframePage() {
-  const { iframeHelper, isActive } = useIframeCallRunner<
-    DemoCommands,
+  const { iframeHelper, commands, isActive } = useIframeCallRunner<
+    DemoCommandsLocal,
     DemoEvents
   >({
     targetOrigin: HOST_ORIGIN,
@@ -147,10 +181,12 @@ export function IframePage() {
   });
 
   useEffect(() => {
-    if (!iframeHelper) return;
-    iframeHelper.sendNotificationToHost("status-changed", "ready");
-    iframeHelper.sendReadyToHost();
-  }, [iframeHelper]);
+    if (!iframeHelper || !commands) return;
+    commands.start();
+    return commands.onStatusChange((s) => {
+      console.log("local status:", s);
+    });
+  }, [iframeHelper, commands]);
 
   return <p>{isActive ? "active" : "initializing"}</p>;
 }
@@ -163,21 +199,22 @@ host                                    iframe
   │                                       │
   │  <iframe src="...">                   │
   │──────────────────────────────────────▶│ mount
-  │                                       │ sendReadyToHost()
-  │  ◀── ready ───────────────────────────│
+  │                                       │ commands.start() → sendLifecycleReady()
+  │  ◀── ready ───────────────────────────│  (lifecycle 채널)
   │  controller.status = "ready"          │
   │                                       │
   │  controller.call("greet", ["World"])  │
   │  ── request ─────────────────────────▶│ DemoCommandsImpl.greet("World")
+  │  ◀── notify status-changed:processing │  (도메인 채널)
   │  ◀── response: "Hello, World!" ───────│
-  │                                       │
-  │  ◀── notify "status-changed" ─────────│ sendNotificationToHost(...)
+  │  ◀── notify status-changed:idle ──────│  (도메인 채널)
 ```
 
-- iframe이 마운트되면 `sendReadyToHost()`로 준비 신호를 보낸다.
-- host의 `controller.call`은 ready 시점까지 대기한 뒤 전송된다 (기본 `ReadyPolicy: "wait"`).
+- iframe이 마운트되면 `commands.start()`가 `sendLifecycleReady()`를 통해 transport ready 신호를 보낸다.
+- host의 `controller.call`은 ready 시점까지 대기한 뒤 전송된다.
 - 응답은 Promise로 돌아오며, iframe 측 메서드가 throw하면 host 쪽 Promise는 reject된다.
 - iframe → host 단방향 알림은 `sendNotificationToHost`로 보내고, host 쪽에서 `controller.onNotificationFromIframe`으로 받는다.
+- **라이프사이클 채널과 도메인 채널은 책임이 다르다.** `ready`/`terminated`는 transport 신호 전용이고, 도메인 알림(`status-changed` 등)에는 `"ready"` 같은 lifecycle 의미를 담지 않는다.
 
 ## API 개요
 
@@ -203,14 +240,14 @@ host                                    iframe
 
 | export | 종류 | 설명 |
 |--------|------|------|
-| `useIframeCallRunner` | hook | iframe용 React 훅. `iframeHelper`, `isActive`를 반환한다. |
+| `useIframeCallRunner` | hook | iframe용 React 훅. `commands`, `iframeHelper`, `isActive`를 반환한다. mount 전 `commands`/`iframeHelper`는 `null`. |
 | `createIframeCallRunner` | factory | 훅 없이 러너를 직접 만들 때 사용 |
 | `createParentWindowTransport` | factory | 커스텀 트랜스포트 구성용 |
 
 `iframeHelper`의 주요 멤버:
 
-- `iframeHelper.sendNotificationToHost(event, payload)` — host로 알림 전송 (lifecycle 예약 이름 `ready`/`terminated`는 제외)
-- `iframeHelper.sendReadyToHost()` — host에 ready 신호 전송
+- `iframeHelper.sendNotificationToHost(event, payload)` — host로 도메인 알림 전송 (lifecycle 예약 이름 `ready`/`terminated`는 타입에서 제외)
+- `iframeHelper.sendLifecycleReady()` — host에 transport lifecycle ready 신호 전송. 도메인 알림과는 채널이 다르다.
 - `iframeHelper.debug.subscribe(handler)` — 디버그 스트림 구독
 
 > 알림은 iframe → host 단방향이다. host → iframe 알림은 라이브러리 외부에서 `postMessage`로 직접 처리하거나, host에서 커맨드를 호출해 처리한다.

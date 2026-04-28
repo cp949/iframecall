@@ -29,7 +29,7 @@ describe("검증: iframecall runner 동작", () => {
       transport: iframe,
       Commands: createBasicRunnerCommandsClass(),
     });
-    runner.sendReadyToHost();
+    runner.sendLifecycleReady();
 
     await expect(controller.call("sum", [1, 2])).resolves.toBe(3);
   });
@@ -57,7 +57,7 @@ describe("검증: iframecall runner 동작", () => {
       transport: iframe,
       Commands: FailingCommands,
     });
-    runner.sendReadyToHost();
+    runner.sendLifecycleReady();
 
     await expect(controller.call("fail", [])).rejects.toEqual({
       code: "command_failed",
@@ -81,7 +81,7 @@ describe("검증: iframecall runner 동작", () => {
       transport: iframe,
       Commands: createBasicRunnerCommandsClass(),
     });
-    runner.sendReadyToHost();
+    runner.sendLifecycleReady();
 
     await expect(
       controller.call("missing" as keyof TestCommands & string, []),
@@ -138,7 +138,7 @@ describe("검증: iframecall runner 동작", () => {
         terminatedReasons.push(parsed.message.payload);
       }
     });
-    runner.sendReadyToHost();
+    runner.sendLifecycleReady();
     await controller.dispose();
     await Promise.resolve();
 

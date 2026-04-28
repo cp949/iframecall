@@ -158,7 +158,7 @@ describe("검증: runner host:dispose 처리", () => {
         });
       },
     });
-    runner.sendReadyToHost();
+    runner.sendLifecycleReady();
     await controller.ready;
 
     host.subscribe((event) => {

@@ -176,7 +176,7 @@ export type IframeHelper<TNotificationsToHost = Record<string, unknown>> = {
       ) => void;
 
   /** transport lifecycle ready 신호를 host로 전송한다. payload는 라이브러리가 고정한다. */
-  sendReadyToHost(): void;
+  sendLifecycleReady(): void;
 
   /** 개발/디버그 패널이 iframecall 통신 흐름을 관찰할 수 있도록 raw event를 흘려준다. */
   readonly debug: {
@@ -372,7 +372,7 @@ export type IframeCallRunnerHandle<
       ) => void;
 
   /** transport lifecycle ready 신호. payload는 `{ protocolVersion: 1 }`로 고정된다. */
-  sendReadyToHost(): void;
+  sendLifecycleReady(): void;
 
   terminated(reason: string, error?: SerializedIframeCallError): void;
 
