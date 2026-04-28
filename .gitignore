@@ -38,3 +38,6 @@ yarn-error.log*
 # Misc
 .DS_Store
 *.pem
+
+# 작업용 plan/계획 문서 (superpowers writing-plans 산출물 등)
+docs/superpowers/
