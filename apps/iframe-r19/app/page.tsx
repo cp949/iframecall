@@ -1,83 +1,11 @@
 "use client";
 
-import type { IframeDebugEvent, IframeHelper } from "@cp949/iframecall/iframe";
+import type { IframeDebugEvent } from "@cp949/iframecall/iframe";
 import { useIframeCallRunner } from "@cp949/iframecall/iframe";
 // monorepo에 react 18/19 typings이 동시 존재해 함수 반환 타입 추론이 portable하지 않다는 TS2883 회피용.
 import type React from "react";
 import { useEffect, useState } from "react";
-
-type RunningStatus = "idle" | "processing";
-
-type DemoCommands = {
-  greet(name: string): Promise<string>;
-  add(a: number, b: number): Promise<number>;
-  delay(ms: number): Promise<void>;
-};
-
-// host에 노출되는 remote command와 별도로, iframe 내부에서 직접 호출하는 lifecycle/local API를 함께 잡는다.
-// `_` prefix는 사용자 local-only이고 dispatch 대상에서 제외된다 (라이브러리는 `$` prefix를 점유).
-type DemoCommandsLocal = DemoCommands & {
-  _start(): void;
-  _onStatusChange(fn: (s: RunningStatus) => void): () => void;
-};
-
-type DemoEvents = {
-  "status-changed": RunningStatus;
-};
-
-class DemoCommandsImpl {
-  private status: RunningStatus = "idle";
-  private inflight = 0;
-  private listeners = new Set<(s: RunningStatus) => void>();
-
-  constructor(private iframeHelper: IframeHelper<DemoEvents>) {}
-
-  _start(): void {
-    this.iframeHelper.sendLifecycleReady();
-  }
-
-  _onStatusChange(fn: (s: RunningStatus) => void): () => void {
-    this.listeners.add(fn);
-    return () => {
-      this.listeners.delete(fn);
-    };
-  }
-
-  // 동시 dispatch 중 가장 안쪽 호출이 끝나기 전에 idle로 떨어지지 않도록 refcount로 토글한다.
-  async $onCommandRun(
-    _cmd: string,
-    _args: readonly unknown[],
-    invoke: () => Promise<unknown>,
-  ): Promise<unknown> {
-    this.inflight += 1;
-    if (this.inflight === 1) this._setStatus("processing");
-    try {
-      return await invoke();
-    } finally {
-      this.inflight -= 1;
-      if (this.inflight === 0) this._setStatus("idle");
-    }
-  }
-
-  private _setStatus(next: RunningStatus): void {
-    if (this.status === next) return;
-    this.status = next;
-    this.iframeHelper.sendNotificationToHost("status-changed", next);
-    for (const fn of this.listeners) fn(next);
-  }
-
-  async greet(name: string): Promise<string> {
-    return `Hello, ${name}!`;
-  }
-
-  async add(a: number, b: number): Promise<number> {
-    return a + b;
-  }
-
-  async delay(ms: number): Promise<void> {
-    await new Promise<void>((resolve) => setTimeout(resolve, ms));
-  }
-}
+import { AppCommands, type AppNotifications } from "./appCommands";
 
 type LogEntry = { id: number; time: string; text: string };
 
@@ -112,19 +40,19 @@ export default function IframePage(): React.JSX.Element {
   const [logs, setLogs] = useState<LogEntry[]>([]);
 
   const { iframeHelper, commands, isActive } = useIframeCallRunner<
-    DemoCommandsLocal,
-    DemoEvents
+    AppCommands,
+    AppNotifications
   >({
     targetOrigin: HOST_ORIGIN,
     allowedOrigins: [HOST_ORIGIN],
-    Commands: DemoCommandsImpl,
+    Commands: AppCommands,
     debugLog: true,
   });
 
   useEffect(() => {
     if (!iframeHelper || !commands) return;
 
-    commands._start();
+    commands._sendLifecycleReady();
 
     const offStatus = commands._onStatusChange((s) => {
       setLogs((prev) => [...prev, makeEntry(`local status: ${s}`)]);

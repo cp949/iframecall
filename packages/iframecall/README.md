@@ -41,13 +41,13 @@ yarn add @cp949/iframecall
 host와 iframe 양쪽에서 동일하게 사용할 커맨드와 알림 타입을 정의한다.
 
 ```ts
-type DemoCommands = {
+type AppCommands = {
   greet(name: string): Promise<string>;
   add(a: number, b: number): Promise<number>;
   delay(ms: number): Promise<void>;
 };
 
-type DemoEvents = {
+type AppNotifications = {
   "status-changed": "idle" | "processing";
 };
 ```
@@ -68,8 +68,8 @@ const IFRAME_ORIGIN = "https://iframe.example.com";
 
 export function HostPage() {
   const { iframeRef, controller, status } = useIframeCallController<
-    DemoCommands,
-    DemoEvents
+    AppCommands,
+    AppNotifications
   >({
     targetOrigin: IFRAME_ORIGIN,
     allowedOrigins: [IFRAME_ORIGIN],
@@ -113,7 +113,7 @@ prefix 컨벤션:
 | prefix | 의미 |
 |--------|------|
 | (없음) | host로 dispatch되는 remote command |
-| `_` | 사용자 local-only 메서드. dispatch 대상에서 제외된다. (예: `_start`, `_onStatusChange`) |
+| `_` | 사용자 local-only 메서드. dispatch 대상에서 제외된다. (예: `_sendLifecycleReady`, `_onStatusChange`) |
 | `$` | 라이브러리 점유 namespace. dispatch에서 제외되며, 라이브러리가 정의한 hook 이름만 의미가 있다. |
 
 현재 라이브러리가 인식하는 hook은 한 개:
@@ -133,20 +133,16 @@ const HOST_ORIGIN = "https://host.example.com";
 
 type RunningStatus = "idle" | "processing";
 
-// host에 노출할 remote command와 별도로, iframe 내부에서 직접 호출하는 lifecycle/local API를 함께 잡는다.
-type DemoCommandsLocal = DemoCommands & {
-  _start(): void;
-  _onStatusChange(fn: (s: RunningStatus) => void): () => void;
-};
-
-class DemoCommandsImpl {
+// 클래스 자체가 곧 command 타입이다. 별도 interface를 두지 않는다.
+// `_` prefix는 사용자 local-only(dispatch 제외), `$` prefix는 라이브러리 namespace.
+class AppCommands {
   private status: RunningStatus = "idle";
   private inflight = 0;
   private listeners = new Set<(s: RunningStatus) => void>();
 
-  constructor(private iframeHelper: IframeHelper<DemoEvents>) {}
+  constructor(private iframeHelper: IframeHelper<AppNotifications>) {}
 
-  _start(): void {
+  _sendLifecycleReady(): void {
     this.iframeHelper.sendLifecycleReady();
   }
 
@@ -195,17 +191,17 @@ class DemoCommandsImpl {
 
 export function IframePage() {
   const { iframeHelper, commands, isActive } = useIframeCallRunner<
-    DemoCommandsLocal,
-    DemoEvents
+    AppCommands,
+    AppNotifications
   >({
     targetOrigin: HOST_ORIGIN,
     allowedOrigins: [HOST_ORIGIN],
-    Commands: DemoCommandsImpl,
+    Commands: AppCommands,
   });
 
   useEffect(() => {
     if (!iframeHelper || !commands) return;
-    commands._start();
+    commands._sendLifecycleReady();
     return commands._onStatusChange((s) => {
       console.log("local status:", s);
     });
@@ -222,18 +218,18 @@ host                                    iframe
   │                                       │
   │  <iframe src="...">                   │
   │──────────────────────────────────────▶│ mount
-  │                                       │ commands._start() → sendLifecycleReady()
+  │                                       │ commands._sendLifecycleReady() → sendLifecycleReady()
   │  ◀── ready ───────────────────────────│  (lifecycle 채널)
   │  controller.status = "ready"          │
   │                                       │
   │  controller.call("greet", ["World"])  │
-  │  ── request ─────────────────────────▶│ $onCommandRun → DemoCommandsImpl.greet("World")
+  │  ── request ─────────────────────────▶│ $onCommandRun → AppCommands.greet("World")
   │  ◀── notify status-changed:processing │  (도메인 채널, refcount 0→1)
   │  ◀── response: "Hello, World!" ───────│
   │  ◀── notify status-changed:idle ──────│  (도메인 채널, refcount 1→0)
 ```
 
-- iframe이 마운트되면 `commands._start()`가 `sendLifecycleReady()`를 통해 transport ready 신호를 보낸다.
+- iframe이 마운트되면 `commands._sendLifecycleReady()`가 `sendLifecycleReady()`를 통해 transport ready 신호를 보낸다.
 - host의 `controller.call`은 ready 시점까지 대기한 뒤 전송된다.
 - 응답은 Promise로 돌아오며, iframe 측 메서드가 throw하면 host 쪽 Promise는 reject된다.
 - iframe → host 단방향 알림은 `sendNotificationToHost`로 보내고, host 쪽에서 `controller.onNotificationFromIframe`으로 받는다.

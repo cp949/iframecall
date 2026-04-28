@@ -4,13 +4,13 @@ import type { HostDebugEvent } from "@cp949/iframecall/host";
 import { useIframeCallController } from "@cp949/iframecall/host";
 import { useEffect, useState } from "react";
 
-type DemoCommands = {
+type AppCommands = {
   greet(name: string): Promise<string>;
   add(a: number, b: number): Promise<number>;
   delay(ms: number): Promise<void>;
 };
 
-type DemoEvents = {
+type AppNotifications = {
   "status-changed": "idle" | "processing";
 };
 
@@ -53,8 +53,8 @@ export default function HostPage() {
   const [delayMs, setDelayMs] = useState(1000);
 
   const { iframeRef, controller, status } = useIframeCallController<
-    DemoCommands,
-    DemoEvents
+    AppCommands,
+    AppNotifications
   >({
     targetOrigin: IFRAME_ORIGIN,
     allowedOrigins: [IFRAME_ORIGIN],
