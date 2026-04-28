@@ -13,10 +13,10 @@ type DemoCommands = {
 };
 
 // host에 노출되는 remote command와 별도로, iframe 내부에서 직접 호출하는 lifecycle/local API를 함께 잡는다.
+// `_` prefix는 사용자 local-only이고 dispatch 대상에서 제외된다 (라이브러리는 `$` prefix를 점유).
 type DemoCommandsLocal = DemoCommands & {
-  start(): void;
-  updateRunningStatus(status: RunningStatus): void;
-  onStatusChange(fn: (s: RunningStatus) => void): () => void;
+  _start(): void;
+  _onStatusChange(fn: (s: RunningStatus) => void): () => void;
 };
 
 type DemoEvents = {
@@ -25,53 +25,55 @@ type DemoEvents = {
 
 class DemoCommandsImpl {
   private status: RunningStatus = "idle";
+  private inflight = 0;
   private listeners = new Set<(s: RunningStatus) => void>();
 
   constructor(private iframeHelper: IframeHelper<DemoEvents>) {}
 
-  start(): void {
+  _start(): void {
     this.iframeHelper.sendLifecycleReady();
   }
 
-  updateRunningStatus(next: RunningStatus): void {
-    if (this.status === next) return;
-    this.status = next;
-    this.iframeHelper.sendNotificationToHost("status-changed", next);
-    for (const fn of this.listeners) fn(next);
-  }
-
-  onStatusChange(fn: (s: RunningStatus) => void): () => void {
+  _onStatusChange(fn: (s: RunningStatus) => void): () => void {
     this.listeners.add(fn);
     return () => {
       this.listeners.delete(fn);
     };
   }
 
-  async greet(name: string): Promise<string> {
-    this.updateRunningStatus("processing");
+  // 동시 dispatch 중 가장 안쪽 호출이 끝나기 전에 idle로 떨어지지 않도록 refcount로 토글한다.
+  async $onCommandRun(
+    _cmd: string,
+    _args: readonly unknown[],
+    invoke: () => Promise<unknown>,
+  ): Promise<unknown> {
+    this.inflight += 1;
+    if (this.inflight === 1) this._setStatus("processing");
     try {
-      return `Hello, ${name}!`;
+      return await invoke();
     } finally {
-      this.updateRunningStatus("idle");
+      this.inflight -= 1;
+      if (this.inflight === 0) this._setStatus("idle");
     }
+  }
+
+  private _setStatus(next: RunningStatus): void {
+    if (this.status === next) return;
+    this.status = next;
+    this.iframeHelper.sendNotificationToHost("status-changed", next);
+    for (const fn of this.listeners) fn(next);
+  }
+
+  async greet(name: string): Promise<string> {
+    return `Hello, ${name}!`;
   }
 
   async add(a: number, b: number): Promise<number> {
-    this.updateRunningStatus("processing");
-    try {
-      return a + b;
-    } finally {
-      this.updateRunningStatus("idle");
-    }
+    return a + b;
   }
 
   async delay(ms: number): Promise<void> {
-    this.updateRunningStatus("processing");
-    try {
-      await new Promise<void>((resolve) => setTimeout(resolve, ms));
-    } finally {
-      this.updateRunningStatus("idle");
-    }
+    await new Promise<void>((resolve) => setTimeout(resolve, ms));
   }
 }
 
@@ -120,9 +122,9 @@ export default function IframePage() {
   useEffect(() => {
     if (!iframeHelper || !commands) return;
 
-    commands.start();
+    commands._start();
 
-    const offStatus = commands.onStatusChange((s) => {
+    const offStatus = commands._onStatusChange((s) => {
       setLogs((prev) => [...prev, makeEntry(`local status: ${s}`)]);
     });
     const offDebug = iframeHelper.debug.subscribe((ev) => {

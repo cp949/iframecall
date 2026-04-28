@@ -106,7 +106,19 @@ export function HostPage() {
 
 ### 3. iframe 측 (임베드된 페이지)
 
-커맨드 구현은 클래스로 정의한다. 생성자는 `iframeHelper`를 인자로 받으며, 메서드 이름이 곧 커맨드 이름이 된다.
+커맨드 구현은 클래스로 정의한다. 생성자는 `iframeHelper`를 인자로 받으며, prototype에 둔 메서드 이름이 곧 커맨드 이름이 된다.
+
+prefix 컨벤션:
+
+| prefix | 의미 |
+|--------|------|
+| (없음) | host로 dispatch되는 remote command |
+| `_` | 사용자 local-only 메서드. dispatch 대상에서 제외된다. (예: `_start`, `_onStatusChange`) |
+| `$` | 라이브러리 점유 namespace. dispatch에서 제외되며, 라이브러리가 정의한 hook 이름만 의미가 있다. |
+
+현재 라이브러리가 인식하는 hook은 한 개:
+
+- `$onCommandRun(cmd, args, invoke)` — 매 command dispatch를 wrap한다. `await invoke()`를 try/finally로 감싸 상태 토글·로깅·refcount 등을 한 곳에서 처리한다.
 
 ```tsx
 "use client";
@@ -123,42 +135,53 @@ type RunningStatus = "idle" | "processing";
 
 // host에 노출할 remote command와 별도로, iframe 내부에서 직접 호출하는 lifecycle/local API를 함께 잡는다.
 type DemoCommandsLocal = DemoCommands & {
-  start(): void;
-  updateRunningStatus(status: RunningStatus): void;
-  onStatusChange(fn: (s: RunningStatus) => void): () => void;
+  _start(): void;
+  _onStatusChange(fn: (s: RunningStatus) => void): () => void;
 };
 
 class DemoCommandsImpl {
   private status: RunningStatus = "idle";
+  private inflight = 0;
   private listeners = new Set<(s: RunningStatus) => void>();
 
   constructor(private iframeHelper: IframeHelper<DemoEvents>) {}
 
-  start(): void {
+  _start(): void {
     this.iframeHelper.sendLifecycleReady();
   }
 
-  updateRunningStatus(next: RunningStatus): void {
-    if (this.status === next) return;
-    this.status = next;
-    this.iframeHelper.sendNotificationToHost("status-changed", next);
-    for (const fn of this.listeners) fn(next);
-  }
-
-  onStatusChange(fn: (s: RunningStatus) => void): () => void {
+  _onStatusChange(fn: (s: RunningStatus) => void): () => void {
     this.listeners.add(fn);
     return () => {
       this.listeners.delete(fn);
     };
   }
 
-  async greet(name: string): Promise<string> {
-    this.updateRunningStatus("processing");
+  // 모든 command를 wrap. 동시 dispatch에서 안쪽 호출이 끝나기 전에 idle로 떨어지지 않도록 refcount.
+  async $onCommandRun(
+    _cmd: string,
+    _args: readonly unknown[],
+    invoke: () => Promise<unknown>,
+  ): Promise<unknown> {
+    this.inflight += 1;
+    if (this.inflight === 1) this._setStatus("processing");
     try {
-      return `Hello, ${name}!`;
+      return await invoke();
     } finally {
-      this.updateRunningStatus("idle");
+      this.inflight -= 1;
+      if (this.inflight === 0) this._setStatus("idle");
     }
+  }
+
+  private _setStatus(next: RunningStatus): void {
+    if (this.status === next) return;
+    this.status = next;
+    this.iframeHelper.sendNotificationToHost("status-changed", next);
+    for (const fn of this.listeners) fn(next);
+  }
+
+  async greet(name: string): Promise<string> {
+    return `Hello, ${name}!`;
   }
 
   async add(a: number, b: number): Promise<number> {
@@ -182,8 +205,8 @@ export function IframePage() {
 
   useEffect(() => {
     if (!iframeHelper || !commands) return;
-    commands.start();
-    return commands.onStatusChange((s) => {
+    commands._start();
+    return commands._onStatusChange((s) => {
       console.log("local status:", s);
     });
   }, [iframeHelper, commands]);
@@ -199,22 +222,23 @@ host                                    iframe
   │                                       │
   │  <iframe src="...">                   │
   │──────────────────────────────────────▶│ mount
-  │                                       │ commands.start() → sendLifecycleReady()
+  │                                       │ commands._start() → sendLifecycleReady()
   │  ◀── ready ───────────────────────────│  (lifecycle 채널)
   │  controller.status = "ready"          │
   │                                       │
   │  controller.call("greet", ["World"])  │
-  │  ── request ─────────────────────────▶│ DemoCommandsImpl.greet("World")
-  │  ◀── notify status-changed:processing │  (도메인 채널)
+  │  ── request ─────────────────────────▶│ $onCommandRun → DemoCommandsImpl.greet("World")
+  │  ◀── notify status-changed:processing │  (도메인 채널, refcount 0→1)
   │  ◀── response: "Hello, World!" ───────│
-  │  ◀── notify status-changed:idle ──────│  (도메인 채널)
+  │  ◀── notify status-changed:idle ──────│  (도메인 채널, refcount 1→0)
 ```
 
-- iframe이 마운트되면 `commands.start()`가 `sendLifecycleReady()`를 통해 transport ready 신호를 보낸다.
+- iframe이 마운트되면 `commands._start()`가 `sendLifecycleReady()`를 통해 transport ready 신호를 보낸다.
 - host의 `controller.call`은 ready 시점까지 대기한 뒤 전송된다.
 - 응답은 Promise로 돌아오며, iframe 측 메서드가 throw하면 host 쪽 Promise는 reject된다.
 - iframe → host 단방향 알림은 `sendNotificationToHost`로 보내고, host 쪽에서 `controller.onNotificationFromIframe`으로 받는다.
 - **라이프사이클 채널과 도메인 채널은 책임이 다르다.** `ready`/`terminated`는 transport 신호 전용이고, 도메인 알림(`status-changed` 등)에는 `"ready"` 같은 lifecycle 의미를 담지 않는다.
+- prototype에 `$onCommandRun(cmd, args, invoke)`을 두면 모든 command dispatch가 그 함수로 wrap된다. status 토글·로깅·refcount 같은 횡단 관심사를 한 곳에서 처리할 수 있다.
 
 ## API 개요
 
@@ -249,6 +273,14 @@ host                                    iframe
 - `iframeHelper.sendNotificationToHost(event, payload)` — host로 도메인 알림 전송 (lifecycle 예약 이름 `ready`/`terminated`는 타입에서 제외)
 - `iframeHelper.sendLifecycleReady()` — host에 transport lifecycle ready 신호 전송. 도메인 알림과는 채널이 다르다.
 - `iframeHelper.debug.subscribe(handler)` — 디버그 스트림 구독
+
+**Commands class prefix 컨벤션:**
+
+- prefix 없는 prototype 메서드 → host에서 호출 가능한 remote command
+- `_` prefix → 사용자 local-only (dispatch 제외)
+- `$` prefix → 라이브러리 namespace (dispatch 제외, 인식되는 hook은 `$onCommandRun`)
+
+`onStatusChange`처럼 prefix가 없으면서 host에서 호출하면 안 되는 메서드는 반드시 `_` prefix를 붙여야 한다. 그렇지 않으면 host가 `controller.call("onStatusChange", [...])`로 직접 호출할 수 있다.
 
 > 알림은 iframe → host 단방향이다. host → iframe 알림은 라이브러리 외부에서 `postMessage`로 직접 처리하거나, host에서 커맨드를 호출해 처리한다.
 
