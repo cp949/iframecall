@@ -10,8 +10,9 @@
 ```text
 iframecall/
 ├── packages/
+│   ├── eslint-config/      # 공유 ESLint 설정
 │   ├── iframecall/         # @cp949/iframecall (라이브러리)
-│   └── typescript-config/  # 공유 TS 설정
+│   └── typescript-config/  # 공유 TypeScript 설정
 └── apps/
     ├── host-r19/           # React 19 host 데모 (포트 3300)
     ├── iframe-r19/         # React 19 iframe 데모 (포트 3301)
@@ -25,7 +26,7 @@ iframecall/
 
 ## 개발
 
-요구 사항: Node.js 18+, pnpm 9.
+요구 사항: Node.js `^20.19.0 || >=22.13.0`, pnpm `10.34.5`.
 
 ```sh
 # 의존성 설치
@@ -40,12 +41,18 @@ pnpm dev:r19
 # React 18 데모 한 쌍 실행 (host:3302, iframe:3303)
 pnpm dev:r18
 
-# 검증
-pnpm test
-pnpm check-types
-pnpm lint
+# 전체 검증 (lint, build, typecheck, test, 배포 도구 gate test)
+pnpm verify
+
+# 포맷팅
 pnpm format
 ```
+
+## 배포
+
+npm 배포는 유지보수자용 대화형 도구로 진행한다. 사전 검증, dry-run, 실제 배포, registry 확인, 버전 태그 push 절차는 [RELEASING.md](./RELEASING.md)를 따른다.
+
+> 실제 npm 배포와 `origin`으로의 태그 push는 외부 쓰기 작업이다.
 
 ## 라이선스
 

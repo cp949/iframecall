@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
+    "build:release": "turbo run build --force",
     "dev": "turbo run dev",
     "dev:r19": "turbo run dev --filter=host-r19 --filter=iframe-r19",
     "dev:r18": "turbo run dev --filter=host-r18 --filter=iframe-r18",
@@ -10,7 +11,10 @@
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
-    "publish:npm": "pnpm --filter @cp949/iframecall publish --access public"
+    "check:gate-tests": "node --test scripts/test/*.test.mjs",
+    "verify": "pnpm lint && pnpm build && pnpm check-types && pnpm test && pnpm check:gate-tests",
+    "verify:release": "turbo run lint --force && pnpm build:release && turbo run check-types --force && turbo run test --force && pnpm check:gate-tests",
+    "publish:npm": "node scripts/publish-packages.mjs"
   },
   "devDependencies": {
     "prettier": "^3.9.6",
