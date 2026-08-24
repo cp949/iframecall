@@ -6,6 +6,7 @@ export default defineConfig({
     iframe: "src/iframe/index.ts",
   },
   format: ["esm"],
+  target: ["chrome75", "firefox67"],
   dts: true,
   clean: true,
   external: ["react", "react-dom"],

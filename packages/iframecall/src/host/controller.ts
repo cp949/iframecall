@@ -54,7 +54,7 @@ export function createIframeCallController<
   const allowedOrigins = new Set(options.allowedOrigins ?? [targetOrigin]);
   const transport =
     options.transport ?? createIframeWindowTransport(options.iframe);
-  const generateId = options.generateId ?? crypto.randomUUID.bind(crypto);
+  const generateId = options.generateId ?? createDefaultRequestId;
   const defaultTimeoutMs = options.defaultTimeoutMs ?? 30_000;
   const readyTimeoutMs = options.readyTimeoutMs ?? defaultTimeoutMs;
   const readyPolicy = options.readyPolicy ?? "queue";
@@ -225,6 +225,16 @@ export function createIframeCallController<
     };
 
   return controller;
+}
+
+/** Chrome 80에서도 지원되는 Web Crypto 난수로 opaque request id를 만든다. */
+function createDefaultRequestId(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  let id = "";
+  for (const byte of bytes) {
+    id += byte.toString(16).padStart(2, "0");
+  }
+  return id;
 }
 
 /** transport 메시지 라우터가 controller closure에서 끌어다 쓰는 의존성. */

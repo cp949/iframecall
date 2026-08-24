@@ -24,6 +24,10 @@
   },
   "type": "module",
   "sideEffects": false,
+  "browserslist": [
+    "chrome 75",
+    "firefox 67"
+  ],
   "files": [
     "dist",
     "README.md",
@@ -52,8 +56,8 @@
     "prepublishOnly": "pnpm run build"
   },
   "peerDependencies": {
-    "react": "^18.0.0 || ^19.0.0",
-    "@types/react": "^18.0.0 || ^19.0.0"
+    "@types/react": "^18.0.0 || ^19.0.0",
+    "react": "^18.0.0 || ^19.0.0"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
@@ -64,8 +68,8 @@
     "eslint": "^9.39.5",
     "jsdom": "^29.1.1",
     "react": "^19.2.8",
-    "typescript": "6.0.3",
     "tsup": "^8.5.1",
+    "typescript": "6.0.3",
     "vitest": "^4.1.11"
   }
 }

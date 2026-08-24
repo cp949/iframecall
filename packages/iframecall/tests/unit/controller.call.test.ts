@@ -2,7 +2,7 @@
  * host-side controller의 call, ready, queue 정책을 검증한다.
  * request/response correlation과 ready 전후 전송 순서, protocol version guard를 확인한다.
  */
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createIframeCallController,
   createIframeCallNotify,
@@ -16,6 +16,42 @@ type TestCommands = {
 };
 
 describe("검증: iframecall controller call과 ready 동작", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("동작: crypto.randomUUID가 없어도 기본 id로 request와 response를 연결한다", async () => {
+    vi.stubGlobal("crypto", {
+      getRandomValues<T extends ArrayBufferView>(array: T): T {
+        new Uint8Array(array.buffer, array.byteOffset, array.byteLength).fill(0);
+        return array;
+      },
+    });
+
+    const { host, iframe } = createLinkedTransports();
+    const controller = createIframeCallController<TestCommands>({
+      iframe: {} as HTMLIFrameElement,
+      targetOrigin: "https://editor.example.com",
+      transport: host,
+    });
+
+    iframe.subscribe((event) => {
+      const parsed = parseIframeCallMessage(event.data);
+      if (parsed?.type !== "request") return;
+
+      iframe.post(
+        createIframeCallSuccessResponse(parsed.message.id, 3),
+        "https://host.example.com",
+      );
+    });
+    iframe.post(
+      createIframeCallNotify("ready", { protocolVersion: 1 }),
+      "https://host.example.com",
+    );
+
+    await expect(controller.call("sum", [1, 2])).resolves.toBe(3);
+  });
+
   it("같은 id의 success response가 오면 call promise를 해결한다", async () => {
     const { host, iframe } = createLinkedTransports();
     const controller = createIframeCallController<TestCommands>({
