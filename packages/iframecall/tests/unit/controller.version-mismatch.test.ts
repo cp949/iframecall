@@ -66,17 +66,20 @@ describe("검증: handleReadyNotify — 비지원 protocolVersion 매트릭스",
     ["42", 42],
     ['"ready"', "ready"],
     ["[1]", [1]],
-  ])("비지원 ready payload %s → version_mismatch로 ready reject, terminated resolve, pending call reject", async (_label, payload) => {
-    const { readyReject, terminatedResolve, pendingCallReject } =
-      setupControllerWithQueuedCall(payload);
+  ])(
+    "비지원 ready payload %s → version_mismatch로 ready reject, terminated resolve, pending call reject",
+    async (_label, payload) => {
+      const { readyReject, terminatedResolve, pendingCallReject } =
+        setupControllerWithQueuedCall(payload);
 
-    // 1. controller.ready는 version_mismatch로 reject된다.
-    await readyReject.toMatchObject({ code: "version_mismatch" });
-    // 2. controller.terminated는 version_mismatch cause로 resolve된다.
-    await terminatedResolve.toMatchObject({ code: "version_mismatch" });
-    // 3. 큐에 쌓인 pending call도 version_mismatch로 reject된다.
-    await pendingCallReject.toMatchObject({ code: "version_mismatch" });
-  });
+      // 1. controller.ready는 version_mismatch로 reject된다.
+      await readyReject.toMatchObject({ code: "version_mismatch" });
+      // 2. controller.terminated는 version_mismatch cause로 resolve된다.
+      await terminatedResolve.toMatchObject({ code: "version_mismatch" });
+      // 3. 큐에 쌓인 pending call도 version_mismatch로 reject된다.
+      await pendingCallReject.toMatchObject({ code: "version_mismatch" });
+    },
+  );
 });
 
 describe("검증: handleReadyNotify — terminate 이후 추가 ready 무효화(idempotency)", () => {

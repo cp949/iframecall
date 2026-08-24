@@ -13,12 +13,20 @@
     "publish:npm": "pnpm --filter @cp949/iframecall publish --access public"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.13",
-    "turbo": "^2.9.6",
+    "@biomejs/biome": "2.5.10",
+    "turbo": "^2.10.11",
     "typescript": "6.0.3"
   },
-  "packageManager": "pnpm@9.0.0",
+  "pnpm": {
+    "overrides": {
+      "esbuild": "0.28.1",
+      "next@15.5.23>postcss": "8.5.23",
+      "next@15.5.23>sharp": "0.35.3",
+      "vite": "8.0.16"
+    }
+  },
+  "packageManager": "pnpm@10.34.5",
   "engines": {
-    "node": ">=18"
+    "node": "^20.19.0 || >=22.13.0"
   }
 }
