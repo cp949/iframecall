@@ -20,16 +20,16 @@ yarn add @cp949/iframecall
 
 `react`, `@types/react`는 peer dependency이다. 프로젝트에 이미 설치되어 있어야 한다.
 
-| peer | 지원 버전 |
-|------|-----------|
-| `react` | `^18.0.0 \|\| ^19.0.0` |
+| peer           | 지원 버전              |
+| -------------- | ---------------------- |
+| `react`        | `^18.0.0 \|\| ^19.0.0` |
 | `@types/react` | `^18.0.0 \|\| ^19.0.0` |
 
 ## 진입점
 
-| import | 용도 |
-|--------|------|
-| `@cp949/iframecall/host` | 부모 페이지(host)에서 iframe을 제어할 때 |
+| import                     | 용도                                              |
+| -------------------------- | ------------------------------------------------- |
+| `@cp949/iframecall/host`   | 부모 페이지(host)에서 iframe을 제어할 때          |
 | `@cp949/iframecall/iframe` | 임베드된 페이지(iframe)에서 host의 호출을 받을 때 |
 
 호스트와 iframe은 서로 다른 origin에서 실행되며, 각 진입점은 그쪽에서만 필요한 API와 타입만 노출한다.
@@ -94,11 +94,7 @@ export function HostPage() {
       <button type="button" onClick={handleGreet} disabled={status !== "ready"}>
         Greet
       </button>
-      <iframe
-        ref={iframeRef}
-        src={IFRAME_ORIGIN}
-        title="iframe demo"
-      />
+      <iframe ref={iframeRef} src={IFRAME_ORIGIN} title="iframe demo" />
     </div>
   );
 }
@@ -110,11 +106,11 @@ export function HostPage() {
 
 prefix 컨벤션:
 
-| prefix | 의미 |
-|--------|------|
-| (없음) | host로 dispatch되는 remote command |
-| `_` | 사용자 local-only 메서드. dispatch 대상에서 제외된다. (예: `_sendLifecycleReady`, `_onStatusChange`) |
-| `$` | 라이브러리 점유 namespace. dispatch에서 제외되며, 라이브러리가 정의한 hook 이름만 의미가 있다. |
+| prefix | 의미                                                                                                 |
+| ------ | ---------------------------------------------------------------------------------------------------- |
+| (없음) | host로 dispatch되는 remote command                                                                   |
+| `_`    | 사용자 local-only 메서드. dispatch 대상에서 제외된다. (예: `_sendLifecycleReady`, `_onStatusChange`) |
+| `$`    | 라이브러리 점유 namespace. dispatch에서 제외되며, 라이브러리가 정의한 hook 이름만 의미가 있다.       |
 
 현재 라이브러리가 인식하는 hook은 한 개:
 
@@ -240,12 +236,12 @@ host                                    iframe
 
 ### host 진입점
 
-| export | 종류 | 설명 |
-|--------|------|------|
-| `useIframeCallController` | hook | host용 React 훅. `iframeRef`, `controller`, `status`를 반환한다. |
-| `createIframeCallController` | factory | 훅 없이 컨트롤러를 직접 만들 때 사용 |
-| `createIframeWindowTransport` | factory | 커스텀 트랜스포트 구성용 |
-| `consoleDebugLogger` | util | 디버그 이벤트를 콘솔에 출력하는 로거 |
+| export                        | 종류    | 설명                                                             |
+| ----------------------------- | ------- | ---------------------------------------------------------------- |
+| `useIframeCallController`     | hook    | host용 React 훅. `iframeRef`, `controller`, `status`를 반환한다. |
+| `createIframeCallController`  | factory | 훅 없이 컨트롤러를 직접 만들 때 사용                             |
+| `createIframeWindowTransport` | factory | 커스텀 트랜스포트 구성용                                         |
+| `consoleDebugLogger`          | util    | 디버그 이벤트를 콘솔에 출력하는 로거                             |
 
 훅이 반환하는 `controller`의 주요 멤버:
 
@@ -258,11 +254,11 @@ host                                    iframe
 
 ### iframe 진입점
 
-| export | 종류 | 설명 |
-|--------|------|------|
-| `useIframeCallRunner` | hook | iframe용 React 훅. `commands`, `iframeHelper`, `isActive`를 반환한다. mount 전 `commands`/`iframeHelper`는 `null`. |
-| `createIframeCallRunner` | factory | 훅 없이 러너를 직접 만들 때 사용 |
-| `createParentWindowTransport` | factory | 커스텀 트랜스포트 구성용 |
+| export                        | 종류    | 설명                                                                                                               |
+| ----------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------ |
+| `useIframeCallRunner`         | hook    | iframe용 React 훅. `commands`, `iframeHelper`, `isActive`를 반환한다. mount 전 `commands`/`iframeHelper`는 `null`. |
+| `createIframeCallRunner`      | factory | 훅 없이 러너를 직접 만들 때 사용                                                                                   |
+| `createParentWindowTransport` | factory | 커스텀 트랜스포트 구성용                                                                                           |
 
 `iframeHelper`의 주요 멤버:
 
@@ -288,9 +284,9 @@ host                                    iframe
 
 `targetOrigin`과 `allowedOrigins`는 반드시 명시적으로 지정한다. 와일드카드(`*`)는 사용하지 않는다.
 
-| 옵션 | 의미 |
-|------|------|
-| `targetOrigin` | `postMessage` 전송 시 사용할 대상 origin |
+| 옵션             | 의미                                      |
+| ---------------- | ----------------------------------------- |
+| `targetOrigin`   | `postMessage` 전송 시 사용할 대상 origin  |
 | `allowedOrigins` | 수신 시 허용할 origin 화이트리스트 (배열) |
 
 수신 메시지의 `event.origin`이 화이트리스트에 없으면 무시된다.

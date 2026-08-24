@@ -1,0 +1,6 @@
+**/.next/**
+**/.turbo/**
+**/.claude/**
+**/node_modules/**
+**/dist/**
+pnpm-lock.yaml

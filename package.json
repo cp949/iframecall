@@ -7,13 +7,13 @@
     "dev:r19": "turbo run dev --filter=host-r19 --filter=iframe-r19",
     "dev:r18": "turbo run dev --filter=host-r18 --filter=iframe-r18",
     "test": "turbo run test",
-    "lint": "biome check .",
-    "format": "biome format --write .",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
     "publish:npm": "pnpm --filter @cp949/iframecall publish --access public"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.10",
+    "prettier": "^3.9.6",
     "turbo": "^2.10.11",
     "typescript": "6.0.3"
   },

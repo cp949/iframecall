@@ -15,10 +15,7 @@ import { createIframeCallController } from "./controller.ts";
 
 /** controller가 거치는 lifecycle 단계. host shell이 직접 화면에 노출하기 좋은 단계로 좁힌다. */
 export type IframeCallControllerStatus =
-  | "pending"
-  | "ready"
-  | "failed"
-  | "terminated";
+  "pending" | "ready" | "failed" | "terminated";
 
 /** debugLog 옵션. true면 자동 구독, prefix override 가능. false/undefined면 미구독. */
 export type UseIframeCallControllerDebugLog =

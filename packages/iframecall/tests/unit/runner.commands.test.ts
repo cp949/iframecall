@@ -167,7 +167,7 @@ describe("검증: iframecall runner 동작", () => {
         throw new Error("Should not run.");
       }
 
-      // biome-ignore lint/complexity/useLiteralKeys: 예약 command 이름 노출 회귀를 computed key 형태로 검증한다.
+      // 예약 command 이름 노출 회귀를 computed key 형태로 검증한다.
       async ["host:dispose"]() {
         domainDisposeCalls.push("called");
       }

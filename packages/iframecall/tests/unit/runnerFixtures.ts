@@ -89,7 +89,7 @@ export function createDeviceCommandsClass() {
     }
 
     // string-literal lifecycle 예약 method는 host에서도 host:dispose request로만 처리한다.
-    // biome-ignore lint/complexity/useLiteralKeys: 의도적으로 computed key 형태로 host:dispose method 노출 회귀를 검증한다.
+    // 의도적으로 computed key 형태로 host:dispose method 노출 회귀를 검증한다.
     async ["host:dispose"](): Promise<void> {}
 
     // symbol-keyed method도 dispatch에서 제외되어야 한다.
