@@ -37,9 +37,17 @@ export function createLinkedTransports() {
 type MemoryTransport = IframeCallTransport & {
   readonly origin: string;
   getListenerCount(): number;
+  getPosts(): readonly MemoryTransportPost[];
   connectTo(nextPeer: MemoryTransport, nextPeerSource: object): void;
   emit(event: IframeCallTransportEvent): void;
   failNextPost(error: unknown): void;
+};
+
+/** 테스트가 transport 경계에서 실제 post 인자를 관측할 때 쓰는 기록 항목. */
+type MemoryTransportPost = {
+  readonly message: unknown;
+  readonly targetOrigin: string;
+  readonly transfer: readonly IframeCallTransferable[] | undefined;
 };
 
 /**
@@ -51,6 +59,7 @@ function createMemoryTransport(
   source: object,
 ): MemoryTransport {
   const listeners = new Set<(event: IframeCallTransportEvent) => void>();
+  const posts: MemoryTransportPost[] = [];
   let peer: MemoryTransport | null = null;
   let nextPostError: unknown = null;
 
@@ -61,7 +70,7 @@ function createMemoryTransport(
       targetOrigin: string,
       transfer?: readonly IframeCallTransferable[],
     ) {
-      void transfer;
+      posts.push({ message, targetOrigin, transfer });
 
       if (nextPostError !== null) {
         const error = nextPostError;
@@ -92,6 +101,9 @@ function createMemoryTransport(
     },
     getListenerCount() {
       return listeners.size;
+    },
+    getPosts() {
+      return posts;
     },
     connectTo(nextPeer, nextPeerSource) {
       peer = nextPeer;

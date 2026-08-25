@@ -20,7 +20,7 @@ function makeEntry(text: string): LogEntry {
 function formatDebugEvent(ev: IframeDebugEvent): string {
   switch (ev.type) {
     case "commandReceivedFromHost":
-      return `← call ${ev.command}(${ev.args.map((a) => JSON.stringify(a)).join(", ")})`;
+      return `← invoke ${ev.command}(${ev.args.map((a) => JSON.stringify(a)).join(", ")})`;
     case "commandResultSentToHost":
       return `→ ${JSON.stringify(ev.value)}`;
     case "commandErrorSentToHost":

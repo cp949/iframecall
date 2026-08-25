@@ -78,12 +78,22 @@ controller.onNotificationFromIframe("unknownEvent", () => {});
 controller.sendNotificationToIframe("stateChanged", { isLoading: true });
 
 /**
- * 명시적 command map 기준으로 controller.invoke가 반환 타입을 보존하고 잘못된 key를 거부해야 한다.
+ * 명시적 command map 기준으로 정식 invoke와 deprecated call이 같은 반환/인자/key 계약을 지켜야 한다.
+ * call은 이 호환성 블록에서만 검증하고, 정식 사용 예시는 invoke로 유지한다.
  * Commands class instance에 같이 존재하더라도 command map에 없으면 호출이 막혀야 한다.
  */
 
 const _invokeResult: Promise<number> = controller.invoke("sum", [1, 2]);
 void _invokeResult;
+
+// @ts-expect-error sum은 number 두 개 인자만 받는다.
+controller.invoke("sum", ["1", 2]);
+
+// @ts-expect-error sum은 두 개보다 적은 인자 tuple을 받지 않는다.
+controller.invoke("sum", [1]);
+
+// @ts-expect-error sum은 두 개보다 많은 인자 tuple을 받지 않는다.
+controller.invoke("sum", [1, 2, 3]);
 
 // @ts-expect-error stateField는 instance field 값이라 command map에 없다.
 controller.invoke("stateField", []);
@@ -99,6 +109,34 @@ controller.invoke("onInstance", []);
 
 // @ts-expect-error host:dispose는 lifecycle 예약 이름이라 도메인 command로 노출되지 않는다.
 controller.invoke("host:dispose", []);
+
+/** deprecated call의 호환 타입 계약. */
+const _callResult: Promise<number> = controller.call("sum", [1, 2]);
+void _callResult;
+
+// @ts-expect-error sum은 number 두 개 인자만 받는다.
+controller.call("sum", ["1", 2]);
+
+// @ts-expect-error sum은 두 개보다 적은 인자 tuple을 받지 않는다.
+controller.call("sum", [1]);
+
+// @ts-expect-error sum은 두 개보다 많은 인자 tuple을 받지 않는다.
+controller.call("sum", [1, 2, 3]);
+
+// @ts-expect-error stateField는 instance field 값이라 command map에 없다.
+controller.call("stateField", []);
+
+// @ts-expect-error iframeHelper는 Commands constructor에 주입된 helper라 command가 아니다.
+controller.call("iframeHelper", []);
+
+// @ts-expect-error `_` prefix 메서드는 command map에 없다.
+controller.call("_hidden", []);
+
+// @ts-expect-error instance field 함수는 prototype command가 아니다.
+controller.call("onInstance", []);
+
+// @ts-expect-error host:dispose는 lifecycle 예약 이름이라 도메인 command로 노출되지 않는다.
+controller.call("host:dispose", []);
 
 /**
  * runner handle generic default 검증.

@@ -260,6 +260,69 @@ describe("검증: iframecall controller invoke와 ready 동작", () => {
     ).resolves.toBe(3);
     expect(sentCommands).toEqual(["id-1"]);
   });
+  it("동작: ready 이후 invoke는 전달받은 transfer list를 transport에 그대로 전달한다", async () => {
+    const { host, iframe } = createLinkedTransports();
+    const controller = createIframeCallController<TestCommands>({
+      iframe: {} as HTMLIFrameElement,
+      targetOrigin: "https://editor.example.com",
+      generateId: () => "immediate-transfer-id",
+      transport: host,
+    });
+    const transfer = [new ArrayBuffer(8)];
+
+    iframe.subscribe((event) => {
+      const parsed = parseIframeCallMessage(event.data);
+      if (parsed?.type !== "request") return;
+      iframe.post(
+        createIframeCallSuccessResponse(parsed.message.id, 3),
+        "https://host.example.com",
+      );
+    });
+    iframe.post(
+      createIframeCallNotify("ready", { protocolVersion: 1 }),
+      "https://host.example.com",
+    );
+
+    await expect(
+      controller.invoke("sum", [1, 2], { timeoutMs: 0, transfer }),
+    ).resolves.toBe(3);
+    expect(host.getPosts()).toHaveLength(1);
+    expect(host.getPosts()[0]?.transfer).toBe(transfer);
+  });
+  it("동작: ready 전 queue된 invoke는 전달받은 transfer list를 transport에 그대로 전달한다", async () => {
+    const { host, iframe } = createLinkedTransports();
+    const controller = createIframeCallController<TestCommands>({
+      iframe: {} as HTMLIFrameElement,
+      targetOrigin: "https://editor.example.com",
+      generateId: () => "queued-transfer-id",
+      transport: host,
+    });
+    const transfer = [new ArrayBuffer(8)];
+
+    iframe.subscribe((event) => {
+      const parsed = parseIframeCallMessage(event.data);
+      if (parsed?.type !== "request") return;
+      iframe.post(
+        createIframeCallSuccessResponse(parsed.message.id, 3),
+        "https://host.example.com",
+      );
+    });
+
+    const queued = controller.invoke("sum", [1, 2], {
+      timeoutMs: 0,
+      transfer,
+    });
+    expect(host.getPosts()).toHaveLength(0);
+
+    iframe.post(
+      createIframeCallNotify("ready", { protocolVersion: 1 }),
+      "https://host.example.com",
+    );
+
+    await expect(queued).resolves.toBe(3);
+    expect(host.getPosts()).toHaveLength(1);
+    expect(host.getPosts()[0]?.transfer).toBe(transfer);
+  });
   it("동작: ready notify를 두 번 받으면 두 번째 ready는 무시하고 warning을 남긴다", async () => {
     const { host, iframe } = createLinkedTransports();
     const warnings: unknown[] = [];

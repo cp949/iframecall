@@ -1,6 +1,6 @@
 // host 측 iframecall controller 구현.
 // iframe ready 대기, command 호출과 응답 매칭, notify 디스패치, 종료 처리까지 lifecycle 전체를 담당한다.
-// 호출/큐/notify 상태와 ready/terminate lifecycle은 각각 별도 모듈로 위임하고, controller는 transport 라우팅 조립과 call API 노출만 책임진다.
+// 호출/큐/notify 상태와 ready/terminate lifecycle은 각각 별도 모듈로 위임하고, controller는 transport 라우팅 조립과 invoke API 노출만 책임진다.
 
 import {
   createIframeCallError,
