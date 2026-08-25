@@ -2,7 +2,7 @@
  * handleReadyNotify와 isSupportedReadyPayload의 version guard 동작을 검증한다.
  *
  * 의도: unsupported ready payload 매트릭스 전체가 빠짐없이 version_mismatch lifecycle error로
- * terminate됨을 잠근다. 단일 케이스(protocolVersion: 2) 단언은 controller.call.test.ts에 이미
+ * terminate됨을 잠근다. 단일 케이스(protocolVersion: 2) 단언은 controller.invoke.test.ts에 이미
  * 있으므로, 본 spec은 매트릭스 가독성 우선으로 모든 케이스를 it.each로 모은다.
  * 두 파일 사이의 protocolVersion: 2 단언 중복은 의도된 설계다.
  */
@@ -22,7 +22,7 @@ type TestCommands = {
  * 비지원 ready payload를 보냈을 때 controller의 세 가지 promise를 한 번에 구성한다.
  *
  * queue 정책 기준으로 ready 전 call을 하나 큐에 넣고, 비지원 payload를 보낸 직후
- * controller.ready reject, controller.terminated resolve, pending call reject를
+ * controller.ready reject, controller.terminated resolve, pending invoke reject를
  * 각각 반환한다. 매트릭스 각 케이스에서 중복 셋업 코드를 제거하기 위해 사용한다.
  */
 function setupControllerWithQueuedCall(payload: unknown) {
@@ -33,8 +33,8 @@ function setupControllerWithQueuedCall(payload: unknown) {
     transport: host,
   });
 
-  // ready 전 call을 큐에 넣어 version_mismatch 시 pending call도 함께 reject되는지 검증한다.
-  const pendingCall = controller.call("sum", [1, 2], { timeoutMs: 0 });
+  // ready 전 invoke를 큐에 넣어 version_mismatch 시 pending invoke도 함께 reject되는지 검증한다.
+  const pendingCall = controller.invoke("sum", [1, 2], { timeoutMs: 0 });
 
   // 비지원 ready payload 전송 — isSupportedReadyPayload가 false를 반환하게 하는 케이스들이다.
   iframe.post(
@@ -67,7 +67,7 @@ describe("검증: handleReadyNotify — 비지원 protocolVersion 매트릭스",
     ['"ready"', "ready"],
     ["[1]", [1]],
   ])(
-    "비지원 ready payload %s → version_mismatch로 ready reject, terminated resolve, pending call reject",
+    "비지원 ready payload %s → version_mismatch로 ready reject, terminated resolve, pending invoke reject",
     async (_label, payload) => {
       const { readyReject, terminatedResolve, pendingCallReject } =
         setupControllerWithQueuedCall(payload);

@@ -39,7 +39,7 @@ describe("host controller debug stream", () => {
     unsubscribe();
   });
 
-  it("call 직후 commandSentToIframe이 발화된다", async () => {
+  it("invoke 직후 commandSentToIframe이 발화된다", async () => {
     const { controller, iframe } = createTestController();
     iframe.post(
       createIframeCallNotify("ready", { protocolVersion: 1 }),
@@ -48,7 +48,7 @@ describe("host controller debug stream", () => {
     const events: HostDebugEvent[] = [];
     controller.debug.subscribe((event) => events.push(event));
 
-    void controller.call("run", []);
+    void controller.invoke("run", []);
     await Promise.resolve();
 
     expect(events).toContainEqual({
@@ -67,7 +67,7 @@ describe("host controller debug stream", () => {
     const events: HostDebugEvent[] = [];
     controller.debug.subscribe((event) => events.push(event));
 
-    const promise = controller.call("run", []);
+    const promise = controller.invoke("run", []);
     iframe.post(
       createIframeCallSuccessResponse("test-id", "ok"),
       "https://host.example.com",
@@ -90,7 +90,7 @@ describe("host controller debug stream", () => {
     const events: HostDebugEvent[] = [];
     controller.debug.subscribe((event) => events.push(event));
 
-    const promise = controller.call("run", []);
+    const promise = controller.invoke("run", []);
     const serializedError = createIframeCallError("invalid_args", "boom", {
       command: "run",
     });

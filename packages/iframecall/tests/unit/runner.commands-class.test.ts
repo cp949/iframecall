@@ -89,10 +89,10 @@ describe("검증: runner Commands class API", () => {
     });
     runner.sendLifecycleReady();
 
-    await expect(controller.call("ping", [])).resolves.toBe("pong");
-    await expect(controller.call("echo", ["hi"])).resolves.toBe("hi");
+    await expect(controller.invoke("ping", [])).resolves.toBe("pong");
+    await expect(controller.invoke("echo", ["hi"])).resolves.toBe("hi");
     // this.state 접근이 깨지지 않아야 readState가 인스턴스 field 값을 반환한다.
-    await expect(controller.call("readState", [])).resolves.toBe("ready");
+    await expect(controller.invoke("readState", [])).resolves.toBe("ready");
   });
 
   it("동작: instance field 함수, _ prefix, $ prefix, accessor, static, symbol-keyed, host:dispose는 command_not_found가 된다", async () => {
@@ -131,7 +131,7 @@ describe("검증: runner Commands class API", () => {
       "onStatic",
     ] as const) {
       await expect(
-        controller.call(hidden, [], { timeoutMs: 50 }),
+        controller.invoke(hidden, [], { timeoutMs: 50 }),
       ).rejects.toMatchObject({
         code: "command_not_found",
         command: hidden,

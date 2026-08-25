@@ -1,6 +1,6 @@
 /**
  * host-side controller의 terminated, timeout, dispose lifecycle을 검증한다.
- * pending/queued call 정리와 transport subscription cleanup, late message 차단을 확인한다.
+ * pending/queued invoke 정리와 transport subscription cleanup, late message 차단을 확인한다.
  */
 import { describe, expect, it } from "vitest";
 import {
@@ -29,7 +29,7 @@ describe("검증: iframecall controller lifecycle 동작", () => {
       createIframeCallNotify("ready", { protocolVersion: 1 }),
       "https://host.example.com",
     );
-    const pending = controller.call("sum", [1, 2], { timeoutMs: 0 });
+    const pending = controller.invoke("sum", [1, 2], { timeoutMs: 0 });
     iframe.post(
       createIframeCallNotify("terminated", { reason: "fatal" }),
       "https://host.example.com",
@@ -39,7 +39,7 @@ describe("검증: iframecall controller lifecycle 동작", () => {
     await expect(controller.terminated).resolves.toMatchObject({
       code: "terminated",
     });
-    await expect(controller.call("sum", [1, 2])).rejects.toMatchObject({
+    await expect(controller.invoke("sum", [1, 2])).rejects.toMatchObject({
       code: "terminated",
     });
   });
@@ -60,7 +60,7 @@ describe("검증: iframecall controller lifecycle 동작", () => {
       createIframeCallNotify("ready", { protocolVersion: 1 }),
       "https://host.example.com",
     );
-    const pending = controller.call("sum", [1, 2], { timeoutMs: 0 });
+    const pending = controller.invoke("sum", [1, 2], { timeoutMs: 0 });
     iframe.post(
       createIframeCallNotify("terminated", {
         reason: "fatal",
@@ -117,7 +117,7 @@ describe("검증: iframecall controller lifecycle 동작", () => {
       createIframeCallNotify("ready", { protocolVersion: 1 }),
       "https://host.example.com",
     );
-    const pending = controller.call("sum", [1, 2], { timeoutMs: 0 });
+    const pending = controller.invoke("sum", [1, 2], { timeoutMs: 0 });
     void pending.catch((error: unknown) => {
       if (
         typeof error === "object" &&
@@ -178,7 +178,7 @@ describe("검증: iframecall controller lifecycle 동작", () => {
       transport: host,
     });
 
-    const pending = controller.call("sum", [1, 2], { timeoutMs: 0 });
+    const pending = controller.invoke("sum", [1, 2], { timeoutMs: 0 });
 
     await expect(controller.ready).rejects.toMatchObject({
       code: "timeout",
@@ -259,7 +259,7 @@ describe("검증: iframecall controller lifecycle 동작", () => {
     );
     host.failNextPost(new DOMException("Cannot clone.", "DataCloneError"));
 
-    await expect(controller.call("sum", [1, 2])).rejects.toMatchObject({
+    await expect(controller.invoke("sum", [1, 2])).rejects.toMatchObject({
       code: "invalid_args",
       command: "sum",
     });
@@ -360,7 +360,7 @@ describe("검증: iframecall controller lifecycle 동작", () => {
       },
       transport: queuedCase.host,
     });
-    const queued = queuedController.call("sum", [1, 2], { timeoutMs: 0 });
+    const queued = queuedController.invoke("sum", [1, 2], { timeoutMs: 0 });
     const queuedExpectation = expect(queued).rejects.toMatchObject({
       code: "terminated",
     });
@@ -400,7 +400,7 @@ describe("검증: iframecall controller lifecycle 동작", () => {
       createIframeCallNotify("ready", { protocolVersion: 1 }),
       "https://host.example.com",
     );
-    const pending = pendingController.call("sum", [1, 2], { timeoutMs: 0 });
+    const pending = pendingController.invoke("sum", [1, 2], { timeoutMs: 0 });
     const pendingExpectation = expect(pending).rejects.toMatchObject({
       code: "terminated",
     });

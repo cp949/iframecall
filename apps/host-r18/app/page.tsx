@@ -29,7 +29,7 @@ function makeEntry(text: string): LogEntry {
 function formatDebugEvent(ev: HostDebugEvent): string {
   switch (ev.type) {
     case "commandSentToIframe":
-      return `→ call ${ev.command}(${ev.args.map((a) => JSON.stringify(a)).join(", ")})`;
+      return `→ invoke ${ev.command}(${ev.args.map((a) => JSON.stringify(a)).join(", ")})`;
     case "commandResultReceivedFromIframe":
       return `← ${JSON.stringify(ev.value)}`;
     case "commandErrorReceivedFromIframe":
@@ -71,15 +71,15 @@ export default function HostPage() {
   const disabled = status !== "ready";
 
   const handleGreet = () => {
-    controller?.call("greet", [greetName]).catch(() => {});
+    controller?.invoke("greet", [greetName]).catch(() => {});
   };
 
   const handleAdd = () => {
-    controller?.call("add", [addA, addB]).catch(() => {});
+    controller?.invoke("add", [addA, addB]).catch(() => {});
   };
 
   const handleDelay = () => {
-    controller?.call("delay", [delayMs]).catch(() => {});
+    controller?.invoke("delay", [delayMs]).catch(() => {});
   };
 
   return (

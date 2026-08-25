@@ -1,7 +1,7 @@
 /**
  * RM-063: host-side controller의 inbound origin 거부 정책을 검증한다.
  * allowedOrigins에 없는 origin에서 도착한 ready notify와 response message가
- * controller ready promise, pending call promise를 resolve/reject시키지 않는지 확인한다.
+ * controller ready promise, pending invoke promise를 resolve/reject시키지 않는지 확인한다.
  */
 import { describe, expect, it } from "vitest";
 import {
@@ -43,7 +43,7 @@ describe("검증: controller inbound origin 거부 정책", () => {
     ).resolves.toBe("pending");
   });
 
-  it("동작: 비허용 origin에서 온 response message는 pending call promise를 resolve시키지 않는다", async () => {
+  it("동작: 비허용 origin에서 온 response message는 pending invoke promise를 resolve시키지 않는다", async () => {
     const { host, iframe, iframeSource } = createLinkedTransports();
 
     const controller = createIframeCallController<TestCommands>({
@@ -61,7 +61,7 @@ describe("검증: controller inbound origin 거부 정책", () => {
     await controller.ready;
 
     // timeoutMs: 0은 타임아웃 없음을 의미한다. Promise.race로 "아직 미결" 상태를 확인한다.
-    const callPromise = controller.call("sum", [1, 2], { timeoutMs: 0 });
+    const callPromise = controller.invoke("sum", [1, 2], { timeoutMs: 0 });
 
     // host transport에 직접 emit해 controller의 allowedOrigins 가드를 실제로 통과시킨다.
     // source는 정상(iframeSource)으로 맞추고 origin만 비허용으로 설정해 origin 가드만 격리한다.
@@ -73,7 +73,7 @@ describe("검증: controller inbound origin 거부 정책", () => {
 
     await Promise.resolve();
 
-    // response가 drop됐으므로 call promise는 아직 settle되지 않아야 한다.
+    // response가 drop됐으므로 invoke promise는 아직 settle되지 않아야 한다.
     await expect(
       Promise.race([callPromise, Promise.resolve("pending")]),
     ).resolves.toBe("pending");
@@ -101,7 +101,7 @@ describe("검증: controller inbound origin 거부 정책", () => {
     await controller.ready;
 
     // 회귀로 정상 response 처리가 깨지면 default 30초가 아닌 1초 안에 빠르게 실패하도록 명시 timeout을 둔다.
-    const callPromise = controller.call("sum", [1, 2], { timeoutMs: 1000 });
+    const callPromise = controller.invoke("sum", [1, 2], { timeoutMs: 1000 });
 
     // host transport에 직접 emit해 controller의 allowedOrigins 가드를 실제로 통과시킨다.
     // source는 정상(iframeSource)으로 맞추고 origin만 비허용으로 설정해 origin 가드만 격리한다.

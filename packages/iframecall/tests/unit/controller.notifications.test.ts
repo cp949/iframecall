@@ -72,7 +72,7 @@ describe("검증: iframecall controller notification 동작", () => {
       origin: "https://editor.example.com",
       source: iframeSource,
     });
-    const pending = controller.call("sum", [1, 2]);
+    const pending = controller.invoke("sum", [1, 2]);
     host.emit({
       data: createIframeCallSuccessResponse("id-1", 3),
       origin: "https://editor.example.com",

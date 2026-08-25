@@ -52,12 +52,12 @@ describe("검증: iframecall controller invoke와 ready 동작", () => {
     await expect(controller.invoke("sum", [1, 2])).resolves.toBe(3);
   });
 
-  it("같은 id의 success response가 오면 call promise를 해결한다", async () => {
+  it("호환성: deprecated call도 command 결과를 반환한다", async () => {
     const { host, iframe } = createLinkedTransports();
     const controller = createIframeCallController<TestCommands>({
       iframe: {} as HTMLIFrameElement,
       targetOrigin: "https://editor.example.com",
-      generateId: () => "id-1",
+      generateId: () => "legacy-call-id",
       transport: host,
     });
 
@@ -78,7 +78,22 @@ describe("검증: iframecall controller invoke와 ready 동작", () => {
 
     await expect(controller.call("sum", [1, 2])).resolves.toBe(3);
   });
-  it("다른 id의 response는 pending call을 해결하지 않는다", async () => {
+  it("호환성: deprecated call도 invoke와 같은 lifecycle 오류를 반환한다", async () => {
+    const { host } = createLinkedTransports();
+    const controller = createIframeCallController<TestCommands>({
+      iframe: {} as HTMLIFrameElement,
+      targetOrigin: "https://editor.example.com",
+      readyPolicy: "reject",
+      transport: host,
+    });
+
+    await expect(controller.call("sum", [1, 2])).rejects.toMatchObject({
+      code: "not_ready",
+      command: "sum",
+    });
+  });
+
+  it("다른 id의 response는 pending invoke를 해결하지 않는다", async () => {
     const { host, iframe } = createLinkedTransports();
     const controller = createIframeCallController<TestCommands>({
       iframe: {} as HTMLIFrameElement,
@@ -99,12 +114,12 @@ describe("검증: iframecall controller invoke와 ready 동작", () => {
       "https://host.example.com",
     );
 
-    await expect(controller.call("sum", [1, 2])).rejects.toMatchObject({
+    await expect(controller.invoke("sum", [1, 2])).rejects.toMatchObject({
       code: "timeout",
       command: "sum",
     });
   });
-  it("동작: queue 정책이면 ready 전 call을 ready 이후 입력 순서대로 전송한다", async () => {
+  it("동작: queue 정책이면 ready 전 invoke를 ready 이후 입력 순서대로 전송한다", async () => {
     const { host, iframe } = createLinkedTransports();
     let nextId = 0;
     const controller = createIframeCallController<TestCommands>({
@@ -130,8 +145,8 @@ describe("검증: iframecall controller invoke와 ready 동작", () => {
       }
     });
 
-    const first = controller.call("sum", [1, 2], { timeoutMs: 0 });
-    const second = controller.call("sum", [3, 4], { timeoutMs: 0 });
+    const first = controller.invoke("sum", [1, 2], { timeoutMs: 0 });
+    const second = controller.invoke("sum", [3, 4], { timeoutMs: 0 });
 
     expect(sentCommands).toEqual([]);
 
@@ -145,7 +160,7 @@ describe("검증: iframecall controller invoke와 ready 동작", () => {
     await expect(second).resolves.toBe(2);
     expect(sentCommands).toEqual(["id-1", "id-2"]);
   });
-  it("동작: reject 정책이면 ready 전 call을 즉시 거부한다", async () => {
+  it("동작: reject 정책이면 ready 전 invoke를 즉시 거부한다", async () => {
     const { host } = createLinkedTransports();
     const controller = createIframeCallController<TestCommands>({
       iframe: {} as HTMLIFrameElement,
@@ -154,12 +169,12 @@ describe("검증: iframecall controller invoke와 ready 동작", () => {
       transport: host,
     });
 
-    await expect(controller.call("sum", [1, 2])).rejects.toMatchObject({
+    await expect(controller.invoke("sum", [1, 2])).rejects.toMatchObject({
       code: "not_ready",
       command: "sum",
     });
   });
-  it("동작: ready queue limit을 넘으면 queue_overflow로 call을 거부한다", async () => {
+  it("동작: ready queue limit을 넘으면 queue_overflow로 invoke를 거부한다", async () => {
     const { host } = createLinkedTransports();
     const controller = createIframeCallController<TestCommands>({
       iframe: {} as HTMLIFrameElement,
@@ -168,9 +183,9 @@ describe("검증: iframecall controller invoke와 ready 동작", () => {
       transport: host,
     });
 
-    void controller.call("sum", [1, 2], { timeoutMs: 0 });
+    void controller.invoke("sum", [1, 2], { timeoutMs: 0 });
 
-    await expect(controller.call("sum", [3, 4])).rejects.toMatchObject({
+    await expect(controller.invoke("sum", [3, 4])).rejects.toMatchObject({
       code: "queue_overflow",
       command: "sum",
     });
@@ -214,7 +229,7 @@ describe("검증: iframecall controller invoke와 ready 동작", () => {
     await expect(controller.ready).resolves.toBeUndefined();
     await expect(controller.ready).resolves.toBeUndefined();
   });
-  it("동작: ready 이후 call은 즉시 request로 전송되고 response로 resolve된다", async () => {
+  it("동작: ready 이후 invoke는 즉시 request로 전송되고 response로 resolve된다", async () => {
     const { host, iframe } = createLinkedTransports();
     const controller = createIframeCallController<TestCommands>({
       iframe: {} as HTMLIFrameElement,
@@ -241,7 +256,7 @@ describe("검증: iframecall controller invoke와 ready 동작", () => {
     );
 
     await expect(
-      controller.call("sum", [1, 2], { timeoutMs: 0 }),
+      controller.invoke("sum", [1, 2], { timeoutMs: 0 }),
     ).resolves.toBe(3);
     expect(sentCommands).toEqual(["id-1"]);
   });
@@ -276,7 +291,7 @@ describe("검증: iframecall controller invoke와 ready 동작", () => {
         );
       }
     });
-    const queued = controller.call("sum", [1, 2], { timeoutMs: 0 });
+    const queued = controller.invoke("sum", [1, 2], { timeoutMs: 0 });
 
     iframe.post(
       createIframeCallNotify("ready", { protocolVersion: 1 }),
@@ -304,7 +319,7 @@ describe("검증: iframecall controller invoke와 ready 동작", () => {
       targetOrigin: "https://editor.example.com",
       transport: host,
     });
-    const pending = controller.call("sum", [1, 2], { timeoutMs: 0 });
+    const pending = controller.invoke("sum", [1, 2], { timeoutMs: 0 });
     const pendingExpectation = expect(pending).rejects.toMatchObject({
       code: "version_mismatch",
     });

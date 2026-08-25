@@ -169,7 +169,7 @@ describe("검증: runner host:dispose 처리", () => {
     });
 
     // command 실행 시작
-    void controller.call("sum", [1, 2]).catch(() => {});
+    void controller.invoke("sum", [1, 2]).catch(() => {});
     await Promise.resolve();
 
     // command가 진행 중일 때 host:dispose 시작

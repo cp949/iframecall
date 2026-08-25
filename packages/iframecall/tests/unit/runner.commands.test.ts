@@ -31,7 +31,7 @@ describe("검증: iframecall runner 동작", () => {
     });
     runner.sendLifecycleReady();
 
-    await expect(controller.call("sum", [1, 2])).resolves.toBe(3);
+    await expect(controller.invoke("sum", [1, 2])).resolves.toBe(3);
   });
 
   it("동작: command handler가 throw하면 serialized error response를 돌려준다", async () => {
@@ -59,7 +59,7 @@ describe("검증: iframecall runner 동작", () => {
     });
     runner.sendLifecycleReady();
 
-    await expect(controller.call("fail", [])).rejects.toEqual({
+    await expect(controller.invoke("fail", [])).rejects.toEqual({
       code: "command_failed",
       message: "Broken command.",
       command: "fail",
@@ -84,7 +84,7 @@ describe("검증: iframecall runner 동작", () => {
     runner.sendLifecycleReady();
 
     await expect(
-      controller.call("missing" as keyof TestCommands & string, []),
+      controller.invoke("missing" as keyof TestCommands & string, []),
     ).rejects.toMatchObject({
       code: "command_not_found",
       command: "missing",

@@ -51,7 +51,7 @@ describe("검증: runner $onCommandRun wrap hook", () => {
     runner.sendLifecycleReady();
     await controller.ready;
 
-    await expect(controller.call("ping", [])).resolves.toBe("pong");
+    await expect(controller.invoke("ping", [])).resolves.toBe("pong");
     expect(calls).toEqual([`before:ping:[]`, `after:ping:"pong"`]);
   });
 
@@ -94,7 +94,7 @@ describe("검증: runner $onCommandRun wrap hook", () => {
     runner.sendLifecycleReady();
     await controller.ready;
 
-    await expect(controller.call("boom", [])).rejects.toMatchObject({
+    await expect(controller.invoke("boom", [])).rejects.toMatchObject({
       message: "boom",
     });
     expect(sequence).toEqual(["before:boom", "finally:boom"]);
@@ -131,7 +131,7 @@ describe("검증: runner $onCommandRun wrap hook", () => {
     runner.sendLifecycleReady();
     await controller.ready;
 
-    await expect(controller.call("ping", [])).rejects.toMatchObject({
+    await expect(controller.invoke("ping", [])).rejects.toMatchObject({
       message: "hook-rejected",
     });
   });
@@ -162,8 +162,8 @@ describe("검증: runner $onCommandRun wrap hook", () => {
     runner.sendLifecycleReady();
     await controller.ready;
 
-    await expect(controller.call("ping", [])).resolves.toBe("pong");
-    await expect(controller.call("boom", [])).rejects.toMatchObject({
+    await expect(controller.invoke("ping", [])).resolves.toBe("pong");
+    await expect(controller.invoke("boom", [])).rejects.toMatchObject({
       message: "boom",
     });
   });
@@ -202,7 +202,7 @@ describe("검증: runner $onCommandRun wrap hook", () => {
     await controller.ready;
 
     await expect(
-      controller.call("$onCommandRun", [], { timeoutMs: 50 }),
+      controller.invoke("$onCommandRun", [], { timeoutMs: 50 }),
     ).rejects.toMatchObject({
       code: "command_not_found",
       command: "$onCommandRun",

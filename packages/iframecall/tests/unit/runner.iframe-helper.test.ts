@@ -119,7 +119,7 @@ describe("검증: iframeHelper debug subscription", () => {
     });
     runner.sendLifecycleReady();
 
-    await expect(controller.call("echo", ["hi"])).resolves.toBe("hi");
+    await expect(controller.invoke("echo", ["hi"])).resolves.toBe("hi");
 
     const types = events.map((event) => event.type);
     expect(types).toEqual([
@@ -162,7 +162,7 @@ describe("검증: iframeHelper debug subscription", () => {
     });
     runner.sendLifecycleReady();
 
-    await expect(controller.call("fail", [])).rejects.toBeDefined();
+    await expect(controller.invoke("fail", [])).rejects.toBeDefined();
 
     const types = events.map((event) => event.type);
     expect(types).toEqual([
@@ -200,7 +200,7 @@ describe("검증: iframeHelper debug subscription", () => {
     });
     runner.sendLifecycleReady();
 
-    await expect(controller.call("unknown", [])).rejects.toMatchObject({
+    await expect(controller.invoke("unknown", [])).rejects.toMatchObject({
       code: "command_not_found",
     });
 
