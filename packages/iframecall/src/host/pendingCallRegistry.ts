@@ -18,10 +18,10 @@ export type PendingCall = {
   /** timeout 적용이 없으면 null. 응답/종료 시 clearTimeout 대상이 된다. */
   readonly timeoutId: ReturnType<typeof setTimeout> | null;
 
-  /** call() 사용자에게 노출된 promise resolver */
+  /** invoke() 사용자에게 노출된 promise resolver */
   readonly resolve: (value: unknown) => void;
 
-  /** call() 사용자에게 노출된 promise rejector */
+  /** invoke() 사용자에게 노출된 promise rejector */
   readonly reject: (error: SerializedIframeCallError) => void;
 };
 

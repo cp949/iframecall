@@ -5,7 +5,7 @@
  * 검증 항목:
  * - generic default가 누락된 호출처에서 typecheck가 깨지지 않는다.
  * - controller.onNotificationFromIframe의 payload가 event 이름에 따라 추론된다.
- * - 명시적 command map 기반 controller.call이 reserved/instance-only key를 거부한다.
+ * - 명시적 command map 기반 controller.invoke가 reserved/instance-only key를 거부한다.
  * - runner.sendNotificationToHost가 명시적 notification map에서 lifecycle 예약 이름(`ready`)을 거부한다.
  * - RM-006 예약 API가 아직 public surface에 노출되지 않았음을 확인한다.
  */

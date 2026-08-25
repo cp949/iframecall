@@ -84,7 +84,7 @@ export function HostPage() {
 
   const handleGreet = async () => {
     if (!controller) return;
-    const result = await controller.call("greet", ["World"]);
+    const result = await controller.invoke("greet", ["World"]);
     console.log(result); // "Hello, World!"
   };
 
@@ -218,7 +218,7 @@ host                                    iframe
   │  ◀── ready ───────────────────────────│  (lifecycle 채널)
   │  controller.status = "ready"          │
   │                                       │
-  │  controller.call("greet", ["World"])  │
+  │  controller.invoke("greet", ["World"])│
   │  ── request ─────────────────────────▶│ $onCommandRun → AppCommands.greet("World")
   │  ◀── notify status-changed:processing │  (도메인 채널, refcount 0→1)
   │  ◀── response: "Hello, World!" ───────│
@@ -226,7 +226,7 @@ host                                    iframe
 ```
 
 - iframe이 마운트되면 `commands._sendLifecycleReady()`가 `sendLifecycleReady()`를 통해 transport ready 신호를 보낸다.
-- host의 `controller.call`은 ready 시점까지 대기한 뒤 전송된다.
+- host의 `controller.invoke`는 ready 시점까지 대기한 뒤 전송된다.
 - 응답은 Promise로 돌아오며, iframe 측 메서드가 throw하면 host 쪽 Promise는 reject된다.
 - iframe → host 단방향 알림은 `sendNotificationToHost`로 보내고, host 쪽에서 `controller.onNotificationFromIframe`으로 받는다.
 - **라이프사이클 채널과 도메인 채널은 책임이 다르다.** `ready`/`terminated`는 transport 신호 전용이고, 도메인 알림(`status-changed` 등)에는 `"ready"` 같은 lifecycle 의미를 담지 않는다.
@@ -245,7 +245,8 @@ host                                    iframe
 
 훅이 반환하는 `controller`의 주요 멤버:
 
-- `controller.call(command, args, options?)` — iframe의 커맨드 호출, 결과를 Promise로 반환
+- `controller.invoke(command, args, options?)` — iframe의 커맨드 호출, 결과를 Promise로 반환
+- `controller.call(command, args, options?)` — deprecated 호환 alias. `invoke`를 사용하세요.
 - `controller.onNotificationFromIframe(event, handler)` — iframe이 보내는 알림 구독, unsubscribe 함수 반환
 - `controller.ready` — iframe ready 신호 대기용 Promise
 - `controller.terminated` — 종료 사유를 노출하는 Promise (정상 dispose면 `null`)
@@ -272,7 +273,7 @@ host                                    iframe
 - `_` prefix → 사용자 local-only (dispatch 제외)
 - `$` prefix → 라이브러리 namespace (dispatch 제외, 인식되는 hook은 `$onCommandRun`)
 
-`onStatusChange`처럼 prefix가 없으면서 host에서 호출하면 안 되는 메서드는 반드시 `_` prefix를 붙여야 한다. 그렇지 않으면 host가 `controller.call("onStatusChange", [...])`로 직접 호출할 수 있다.
+`onStatusChange`처럼 prefix가 없으면서 host에서 호출하면 안 되는 메서드는 반드시 `_` prefix를 붙여야 한다. 그렇지 않으면 host가 `controller.invoke("onStatusChange", [...])`로 직접 호출할 수 있다.
 
 > 알림은 iframe → host 단방향이다. host → iframe 알림은 라이브러리 외부에서 `postMessage`로 직접 처리하거나, host에서 커맨드를 호출해 처리한다.
 

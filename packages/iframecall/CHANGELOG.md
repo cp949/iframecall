@@ -4,6 +4,16 @@
 
 형식은 [Keep a Changelog](https://keepachangelog.com/ko/1.1.0/)을 따르며, 버전 관리는 [Semantic Versioning](https://semver.org/spec/v2.0.0.html)을 준수합니다. 0.x 버전대에서는 호환성이 깨지는 변경도 minor 버전 증가로 처리합니다.
 
+## [Unreleased]
+
+### Added
+
+- host controller의 정식 command 실행 API로 `invoke(command, args, options?)`를 추가했습니다.
+
+### Deprecated
+
+- `controller.call()`은 호환성을 위해 유지하지만 다음 major release에서 제거할 예정입니다. `controller.invoke()`를 사용하세요.
+
 ## [0.2.0] - 2026-04-28
 
 ### Added

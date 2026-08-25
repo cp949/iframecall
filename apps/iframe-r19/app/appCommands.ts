@@ -7,7 +7,7 @@
  * `$` prefix는 라이브러리 hook으로 인식한다.
  *
  * prefix 컨벤션:
- * - prefix 없음 → host에서 `controller.call(name, args)`로 호출 가능한 remote command
+ * - prefix 없음 → host에서 `controller.invoke(name, args)`로 호출 가능한 remote command
  * - `_` prefix  → 사용자 local-only (dispatch 제외, 컴포넌트가 직접 호출)
  * - `$` prefix  → 라이브러리 점유 namespace (dispatch 제외, 인식되는 hook은 `$onCommandRun` 한 개)
  *
@@ -65,7 +65,7 @@ export class AppCommands {
 
   /**
    * **선택적 — 사용자 패턴.** transport lifecycle ready 신호를 host로 한 번 보낸다.
-   * 보통 컴포넌트가 mount 직후 한 번 호출한다. 이 신호가 도착해야 host의 `controller.call`이 풀린다.
+   * 보통 컴포넌트가 mount 직후 한 번 호출한다. 이 신호가 도착해야 host의 `controller.invoke`가 풀린다.
    *
    * 본질적으로 `iframeHelper.sendLifecycleReady()` 한 줄 wrap이라 컴포넌트에서 직접 호출해도 무방하다.
    * 클래스에 두면 (1) 호출 의도 명시, (2) 추가 초기화를 함께 묶을 수 있다는 장점이 있다.
@@ -139,7 +139,7 @@ export class AppCommands {
   // args와 return은 structured clone 가능해야 한다 (함수, DOM 노드, 클래스 인스턴스 등은 보낼 수 없음).
 
   /**
-   * **사용자 도메인 메서드.** host의 `controller.call("greet", ["World"])`로 호출된다.
+   * **사용자 도메인 메서드.** host의 `controller.invoke("greet", ["World"])`로 호출된다.
    * 인사말 문자열을 돌려주는 단순 데모 command.
    */
   async greet(name: string): Promise<string> {

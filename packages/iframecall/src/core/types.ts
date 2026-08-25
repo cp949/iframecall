@@ -125,7 +125,7 @@ export type IframeCallControllerOptions<
   /** queue 정책일 때 대기열 최대 크기. 초과 호출은 queue_overflow 에러로 거부한다. */
   readonly readyQueueLimit?: number;
 
-  /** call() 호출별 timeout 기본값(ms). 0 또는 Infinity면 timeout을 적용하지 않는다. */
+  /** invoke() 호출별 timeout 기본값(ms). 0 또는 Infinity면 timeout을 적용하지 않는다. */
   readonly defaultTimeoutMs?: number;
 
   /** ready 신호 대기 timeout(ms). 미지정이면 defaultTimeoutMs를 따른다. */
