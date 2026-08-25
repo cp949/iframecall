@@ -1,6 +1,6 @@
 {
   "name": "@cp949/iframecall",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "타입 안전한 host ↔ iframe postMessage 호출 라이브러리 (React 18/19 지원)",
   "keywords": [
     "iframe",

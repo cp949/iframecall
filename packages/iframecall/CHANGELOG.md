@@ -4,7 +4,7 @@
 
 형식은 [Keep a Changelog](https://keepachangelog.com/ko/1.1.0/)을 따르며, 버전 관리는 [Semantic Versioning](https://semver.org/spec/v2.0.0.html)을 준수합니다. 0.x 버전대에서는 호환성이 깨지는 변경도 minor 버전 증가로 처리합니다.
 
-## [Unreleased]
+## [0.2.1] - 2026-08-25
 
 ### Added
 
