@@ -16,7 +16,7 @@ type TestCommands = {
 };
 
 describe("검증: iframecall controller lifecycle 동작", () => {
-  it("동작: terminated notify를 받으면 pending call과 이후 call을 terminated로 거부한다", async () => {
+  it("동작: terminated notify를 받으면 pending invoke와 이후 invoke를 terminated로 거부한다", async () => {
     const { host, iframe } = createLinkedTransports();
     const controller = createIframeCallController<TestCommands>({
       iframe: {} as HTMLIFrameElement,
@@ -43,7 +43,7 @@ describe("검증: iframecall controller lifecycle 동작", () => {
       code: "terminated",
     });
   });
-  it("동작: terminated payload의 error를 pending call의 cause로 전달한다", async () => {
+  it("동작: terminated payload의 error를 pending invoke의 cause로 전달한다", async () => {
     const { host, iframe } = createLinkedTransports();
     const controller = createIframeCallController<TestCommands>({
       iframe: {} as HTMLIFrameElement,
@@ -99,7 +99,7 @@ describe("검증: iframecall controller lifecycle 동작", () => {
     expect(lifecycleError).toMatchObject({ code: "terminated" });
     expect(lifecycleError?.cause).toBeUndefined();
   });
-  it("동작: terminated 이후 late response는 settled call을 되살리지 않고 late notify는 무시한다", async () => {
+  it("동작: terminated 이후 late response는 settled invoke를 되살리지 않고 late notify는 무시한다", async () => {
     const { host, iframe } = createLinkedTransports();
     const controller = createIframeCallController<TestCommands>({
       iframe: {} as HTMLIFrameElement,
@@ -169,7 +169,7 @@ describe("검증: iframecall controller lifecycle 동작", () => {
       details: { reason: "first" },
     });
   });
-  it("동작: ready timeout이 지나면 ready와 queued call을 timeout으로 거부한다", async () => {
+  it("동작: ready timeout이 지나면 ready와 queued invoke를 timeout으로 거부한다", async () => {
     const { host } = createLinkedTransports();
     const controller = createIframeCallController<TestCommands>({
       iframe: {} as HTMLIFrameElement,
@@ -244,7 +244,7 @@ describe("검증: iframecall controller lifecycle 동작", () => {
     );
     await expect(controller.ready).resolves.toBeUndefined();
   });
-  it("동작: request post가 실패하면 invalid_args로 call을 거부한다", async () => {
+  it("동작: request post가 실패하면 invalid_args로 invoke를 거부한다", async () => {
     const { host, iframe } = createLinkedTransports();
     const controller = createIframeCallController<TestCommands>({
       iframe: {} as HTMLIFrameElement,
@@ -347,7 +347,7 @@ describe("검증: iframecall controller lifecycle 동작", () => {
     expect(host.getListenerCount()).toBe(0);
     expect(received).toEqual([]);
   });
-  it("동작: dispose message 전송이 실패해도 pending과 queued call을 정리하고 late notify를 무시한다", async () => {
+  it("동작: dispose message 전송이 실패해도 pending과 queued invoke를 정리하고 late notify를 무시한다", async () => {
     const queuedCase = createLinkedTransports();
     const queuedWarnings: unknown[] = [];
     const queuedController = createIframeCallController<TestCommands>({

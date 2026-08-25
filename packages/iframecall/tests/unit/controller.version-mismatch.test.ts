@@ -21,11 +21,11 @@ type TestCommands = {
 /**
  * 비지원 ready payload를 보냈을 때 controller의 세 가지 promise를 한 번에 구성한다.
  *
- * queue 정책 기준으로 ready 전 call을 하나 큐에 넣고, 비지원 payload를 보낸 직후
+ * queue 정책 기준으로 ready 전 invoke를 하나 큐에 넣고, 비지원 payload를 보낸 직후
  * controller.ready reject, controller.terminated resolve, pending invoke reject를
  * 각각 반환한다. 매트릭스 각 케이스에서 중복 셋업 코드를 제거하기 위해 사용한다.
  */
-function setupControllerWithQueuedCall(payload: unknown) {
+function setupControllerWithQueuedInvoke(payload: unknown) {
   const { host, iframe } = createLinkedTransports();
   const controller = createIframeCallController<TestCommands>({
     iframe: {} as HTMLIFrameElement,
@@ -34,7 +34,7 @@ function setupControllerWithQueuedCall(payload: unknown) {
   });
 
   // ready 전 invoke를 큐에 넣어 version_mismatch 시 pending invoke도 함께 reject되는지 검증한다.
-  const pendingCall = controller.invoke("sum", [1, 2], { timeoutMs: 0 });
+  const pendingInvoke = controller.invoke("sum", [1, 2], { timeoutMs: 0 });
 
   // 비지원 ready payload 전송 — isSupportedReadyPayload가 false를 반환하게 하는 케이스들이다.
   iframe.post(
@@ -46,7 +46,7 @@ function setupControllerWithQueuedCall(payload: unknown) {
     iframe,
     readyReject: expect(controller.ready).rejects,
     terminatedResolve: expect(controller.terminated).resolves,
-    pendingCallReject: expect(pendingCall).rejects,
+    pendingInvokeReject: expect(pendingInvoke).rejects,
     controller,
   };
 }
@@ -69,15 +69,15 @@ describe("검증: handleReadyNotify — 비지원 protocolVersion 매트릭스",
   ])(
     "비지원 ready payload %s → version_mismatch로 ready reject, terminated resolve, pending invoke reject",
     async (_label, payload) => {
-      const { readyReject, terminatedResolve, pendingCallReject } =
-        setupControllerWithQueuedCall(payload);
+      const { readyReject, terminatedResolve, pendingInvokeReject } =
+        setupControllerWithQueuedInvoke(payload);
 
       // 1. controller.ready는 version_mismatch로 reject된다.
       await readyReject.toMatchObject({ code: "version_mismatch" });
       // 2. controller.terminated는 version_mismatch cause로 resolve된다.
       await terminatedResolve.toMatchObject({ code: "version_mismatch" });
-      // 3. 큐에 쌓인 pending call도 version_mismatch로 reject된다.
-      await pendingCallReject.toMatchObject({ code: "version_mismatch" });
+      // 3. 큐에 쌓인 pending invoke도 version_mismatch로 reject된다.
+      await pendingInvokeReject.toMatchObject({ code: "version_mismatch" });
     },
   );
 });
@@ -89,13 +89,13 @@ describe("검증: handleReadyNotify — terminate 이후 추가 ready 무효화(
       iframe,
       readyReject,
       terminatedResolve,
-      pendingCallReject,
+      pendingInvokeReject,
       controller,
-    } = setupControllerWithQueuedCall({ protocolVersion: 0 });
+    } = setupControllerWithQueuedInvoke({ protocolVersion: 0 });
 
     await readyReject.toMatchObject({ code: "version_mismatch" });
     await terminatedResolve.toMatchObject({ code: "version_mismatch" });
-    await pendingCallReject.toMatchObject({ code: "version_mismatch" });
+    await pendingInvokeReject.toMatchObject({ code: "version_mismatch" });
 
     // terminate 이후 올바른 protocolVersion: 1 ready를 보내도 controller.terminated는
     // 이미 settle된 상태여야 한다 — 두 번째 resolve/reject 변동이 없어야 한다.
