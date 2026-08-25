@@ -107,79 +107,81 @@ export function createIframeCallController<
     notifyRegistry.clear();
   });
 
+  const invoke: IframeCallController<
+    TCommands,
+    TNotificationsFromIframe
+  >["invoke"] = (cmd, args, callOptions) => {
+    const terminatedError = lifecycle.getTerminatedError();
+    if (terminatedError !== null) {
+      return Promise.reject(terminatedError);
+    }
+
+    if (!lifecycle.isReady() && readyPolicy === "reject") {
+      return Promise.reject(
+        createIframeCallError("not_ready", "Iframe is not ready.", {
+          command: cmd,
+        }),
+      );
+    }
+
+    const id = generateId();
+    const timeoutMs = callOptions?.timeoutMs ?? defaultTimeoutMs;
+
+    return new Promise((resolve, reject) => {
+      const timeoutId =
+        timeoutMs === 0 || timeoutMs === Number.POSITIVE_INFINITY
+          ? null
+          : setTimeout(() => {
+              pending.delete(id);
+              queue.delete(id);
+              reject(
+                createIframeCallError("timeout", "Command timed out.", {
+                  command: cmd,
+                  details: { timeoutMs },
+                }),
+              );
+            }, timeoutMs);
+
+      const call: PendingCall = {
+        command: cmd,
+        timeoutId,
+        resolve: resolve as (value: unknown) => void,
+        reject,
+      };
+
+      if (!lifecycle.isReady()) {
+        if (queue.size() >= readyQueueLimit) {
+          if (timeoutId !== null) clearTimeout(timeoutId);
+          reject(
+            createIframeCallError("queue_overflow", "Ready queue overflow.", {
+              command: cmd,
+              details: { readyQueueLimit },
+            }),
+          );
+          return;
+        }
+
+        queue.add(id, {
+          ...call,
+          args,
+          transfer: callOptions?.transfer,
+        });
+        return;
+      }
+
+      emitDebug({ type: "commandSentToIframe", command: cmd, args });
+      pending.add(id, call);
+      pending.post(id, cmd, args, callOptions?.transfer);
+    }) as Promise<CommandResult<TCommands[typeof cmd]>>;
+  };
+
   const controller: IframeCallController<TCommands, TNotificationsFromIframe> =
     {
       ready: lifecycle.ready,
       terminated: lifecycle.terminated,
+      invoke,
       call(cmd, args, callOptions) {
-        const terminatedError = lifecycle.getTerminatedError();
-        if (terminatedError !== null) {
-          return Promise.reject(terminatedError);
-        }
-
-        if (!lifecycle.isReady() && readyPolicy === "reject") {
-          return Promise.reject(
-            createIframeCallError("not_ready", "Iframe is not ready.", {
-              command: cmd,
-            }),
-          );
-        }
-
-        const id = generateId();
-        const timeoutMs = callOptions?.timeoutMs ?? defaultTimeoutMs;
-
-        return new Promise((resolve, reject) => {
-          const timeoutId =
-            timeoutMs === 0 || timeoutMs === Number.POSITIVE_INFINITY
-              ? null
-              : setTimeout(() => {
-                  pending.delete(id);
-                  queue.delete(id);
-                  reject(
-                    createIframeCallError("timeout", "Command timed out.", {
-                      command: cmd,
-                      details: { timeoutMs },
-                    }),
-                  );
-                }, timeoutMs);
-
-          const call: PendingCall = {
-            command: cmd,
-            timeoutId,
-            resolve: resolve as (value: unknown) => void,
-            reject,
-          };
-
-          if (!lifecycle.isReady()) {
-            if (queue.size() >= readyQueueLimit) {
-              if (timeoutId !== null) {
-                clearTimeout(timeoutId);
-              }
-              reject(
-                createIframeCallError(
-                  "queue_overflow",
-                  "Ready queue overflow.",
-                  {
-                    command: cmd,
-                    details: { readyQueueLimit },
-                  },
-                ),
-              );
-              return;
-            }
-
-            queue.add(id, {
-              ...call,
-              args,
-              transfer: callOptions?.transfer,
-            });
-            return;
-          }
-
-          emitDebug({ type: "commandSentToIframe", command: cmd, args });
-          pending.add(id, call);
-          pending.post(id, cmd, args, callOptions?.transfer);
-        }) as Promise<CommandResult<TCommands[typeof cmd]>>;
+        return invoke(cmd, args, callOptions);
       },
       onNotificationFromIframe(event, handler) {
         // typed handler를 내부 Set에 보관하기 위한 최소한의 cast.

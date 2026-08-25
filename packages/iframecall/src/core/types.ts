@@ -302,10 +302,17 @@ export type IframeCallController<
   readonly terminated: Promise<SerializedIframeCallError | null>;
 
   /**
-   * iframe에 등록된 command를 호출한다.
-   * ready 이전 호출은 readyPolicy에 따라 queue되거나 즉시 거부된다.
-   * timeout/transfer는 호출별 options로 지정한다.
+   * iframe에 등록된 command를 실행한다.
+   * ready 이전 실행은 readyPolicy에 따라 queue되거나 즉시 거부된다.
+   * timeout/transfer는 실행별 options로 지정한다.
    */
+  invoke<K extends keyof TCommands & string>(
+    cmd: K,
+    args: CommandArgs<TCommands[K]>,
+    options?: IframeCallCallOptions,
+  ): Promise<CommandResult<TCommands[K]>>;
+
+  /** @deprecated `invoke()`를 사용한다. 다음 major release에서 제거될 예정이다. */
   call<K extends keyof TCommands & string>(
     cmd: K,
     args: CommandArgs<TCommands[K]>,

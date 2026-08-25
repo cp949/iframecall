@@ -1,5 +1,5 @@
 /**
- * host-side controller의 call, ready, queue 정책을 검증한다.
+ * host-side controller의 invoke, ready, queue 정책을 검증한다.
  * request/response correlation과 ready 전후 전송 순서, protocol version guard를 확인한다.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -15,7 +15,7 @@ type TestCommands = {
   sum: (a: number, b: number) => number;
 };
 
-describe("검증: iframecall controller call과 ready 동작", () => {
+describe("검증: iframecall controller invoke와 ready 동작", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
@@ -49,7 +49,7 @@ describe("검증: iframecall controller call과 ready 동작", () => {
       "https://host.example.com",
     );
 
-    await expect(controller.call("sum", [1, 2])).resolves.toBe(3);
+    await expect(controller.invoke("sum", [1, 2])).resolves.toBe(3);
   });
 
   it("같은 id의 success response가 오면 call promise를 해결한다", async () => {

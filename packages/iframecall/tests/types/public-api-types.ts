@@ -24,6 +24,7 @@ import { createIframeCallController } from "../../src/host/controller.ts";
 type DeviceCommands = {
   ping(): Promise<"pong">;
   echo(value: string): Promise<string>;
+  sum(a: number, b: number): number;
 };
 
 /**
@@ -77,24 +78,27 @@ controller.onNotificationFromIframe("unknownEvent", () => {});
 controller.sendNotificationToIframe("stateChanged", { isLoading: true });
 
 /**
- * 명시적 command map 기준으로 controller.call이 거부해야 하는 key 목록.
+ * 명시적 command map 기준으로 controller.invoke가 반환 타입을 보존하고 잘못된 key를 거부해야 한다.
  * Commands class instance에 같이 존재하더라도 command map에 없으면 호출이 막혀야 한다.
  */
 
+const _invokeResult: Promise<number> = controller.invoke("sum", [1, 2]);
+void _invokeResult;
+
 // @ts-expect-error stateField는 instance field 값이라 command map에 없다.
-controller.call("stateField", []);
+controller.invoke("stateField", []);
 
 // @ts-expect-error iframeHelper는 Commands constructor에 주입된 helper라 command가 아니다.
-controller.call("iframeHelper", []);
+controller.invoke("iframeHelper", []);
 
-// @ts-expect-error `_` prefix 메서드는 비공개 의도이므로 command map에 등재하지 않는다.
-controller.call("_hidden", []);
+// @ts-expect-error `_` prefix 메서드는 command map에 없다.
+controller.invoke("_hidden", []);
 
-// @ts-expect-error instance field에 할당된 함수도 prototype method가 아니므로 command가 아니다.
-controller.call("onInstance", []);
+// @ts-expect-error instance field 함수는 prototype command가 아니다.
+controller.invoke("onInstance", []);
 
 // @ts-expect-error host:dispose는 lifecycle 예약 이름이라 도메인 command로 노출되지 않는다.
-controller.call("host:dispose", []);
+controller.invoke("host:dispose", []);
 
 /**
  * runner handle generic default 검증.
@@ -148,6 +152,9 @@ class _DeviceCommandsImpl {
   }
   async echo(value: string): Promise<string> {
     return value;
+  }
+  sum(a: number, b: number): number {
+    return a + b;
   }
 }
 
