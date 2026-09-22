@@ -5,6 +5,51 @@ import { describe, expect, it } from "vitest";
 import { validateInbound } from "../../src/core/inboundValidation.ts";
 
 describe("검증: 수신 이벤트", () => {
+  it("origin이 거부되면 source와 data를 읽지 않는다", () => {
+    let sourceReads = 0;
+    let dataReads = 0;
+    const event = {
+      origin: "https://evil.example.com",
+      get source() {
+        sourceReads += 1;
+        return { name: "host" };
+      },
+      get data() {
+        dataReads += 1;
+        return { protocol: "iframecall" };
+      },
+    };
+
+    expect(
+      validateInbound(event, {
+        allowedOrigins: new Set(["https://host.example.com"]),
+        expectedSource: { name: "host" },
+      }),
+    ).toEqual({ accepted: false, reason: "origin" });
+    expect(sourceReads).toBe(0);
+    expect(dataReads).toBe(0);
+  });
+
+  it("source가 거부되면 data를 읽지 않는다", () => {
+    let dataReads = 0;
+    const event = {
+      origin: "https://host.example.com",
+      source: { name: "evil" },
+      get data() {
+        dataReads += 1;
+        return { protocol: "iframecall" };
+      },
+    };
+
+    expect(
+      validateInbound(event, {
+        allowedOrigins: new Set(["https://host.example.com"]),
+        expectedSource: { name: "host" },
+      }),
+    ).toEqual({ accepted: false, reason: "source" });
+    expect(dataReads).toBe(0);
+  });
+
   it("origin, source, message 순서로 거부하고 source 미지정 시 검증을 생략한다", () => {
     const policy = {
       allowedOrigins: new Set(["https://host.example.com"]),
