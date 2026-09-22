@@ -23,7 +23,9 @@ describe("검증: iframecall controller invoke와 ready 동작", () => {
   it("동작: crypto.randomUUID가 없어도 기본 id로 request와 response를 연결한다", async () => {
     vi.stubGlobal("crypto", {
       getRandomValues<T extends ArrayBufferView>(array: T): T {
-        new Uint8Array(array.buffer, array.byteOffset, array.byteLength).fill(0);
+        new Uint8Array(array.buffer, array.byteOffset, array.byteLength).fill(
+          0,
+        );
         return array;
       },
     });

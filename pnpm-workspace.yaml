@@ -1,3 +1,13 @@
 packages:
   - "apps/*"
   - "packages/*"
+
+allowBuilds:
+  esbuild: true
+
+overrides:
+  esbuild: 0.28.1
+  electron-to-chromium: 1.5.433
+  next@15.5.23>postcss: 8.5.23
+  next@15.5.23>sharp: 0.35.3
+  vite: 8.0.16

@@ -22,7 +22,9 @@ export const config = [
     },
     settings: { react: { version: "detect" } },
     rules: {
-      ...pluginReactHooks.configs.recommended.rules,
+      // v7 recommended에는 React Compiler 규칙이 추가됐다. 기존 Hooks 정책만 유지한다.
+      "react-hooks/rules-of-hooks": "error",
+      "react-hooks/exhaustive-deps": "warn",
       "react/react-in-jsx-scope": "off",
     },
   },

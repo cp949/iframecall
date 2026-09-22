@@ -10,6 +10,7 @@
     "test": "turbo run test",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
     "check:gate-tests": "node --test scripts/test/*.test.mjs",
     "verify": "pnpm lint && pnpm build && pnpm check-types && pnpm test && pnpm check:gate-tests",
@@ -17,19 +18,11 @@
     "publish:npm": "node scripts/publish-packages.mjs"
   },
   "devDependencies": {
-    "prettier": "^3.9.6",
+    "prettier": "3.9.8",
     "turbo": "^2.10.11",
     "typescript": "6.0.3"
   },
-  "pnpm": {
-    "overrides": {
-      "esbuild": "0.28.1",
-      "next@15.5.23>postcss": "8.5.23",
-      "next@15.5.23>sharp": "0.35.3",
-      "vite": "8.0.16"
-    }
-  },
-  "packageManager": "pnpm@10.34.5",
+  "packageManager": "pnpm@11.27.1",
   "engines": {
     "node": "^20.19.0 || >=22.13.0"
   }
