@@ -95,6 +95,26 @@ describe("검증: iframecall controller invoke와 ready 동작", () => {
     });
   });
 
+  it("동작: readyPolicy가 reject면 ready 이전 invoke에서 request id를 만들지 않는다", async () => {
+    const { host } = createLinkedTransports();
+    let generated = 0;
+    const controller = createIframeCallController<TestCommands>({
+      iframe: {} as HTMLIFrameElement,
+      targetOrigin: "https://editor.example.com",
+      readyPolicy: "reject",
+      generateId: () => {
+        generated += 1;
+        return `id-${generated}`;
+      },
+      transport: host,
+    });
+
+    await expect(controller.invoke("sum", [1, 2])).rejects.toMatchObject({
+      code: "not_ready",
+    });
+    expect(generated).toBe(0);
+  });
+
   it("다른 id의 response는 pending invoke를 해결하지 않는다", async () => {
     const { host, iframe } = createLinkedTransports();
     const controller = createIframeCallController<TestCommands>({

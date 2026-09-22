@@ -33,11 +33,9 @@ import {
   type NotifyHandlerRegistry,
 } from "./notifyHandlerRegistry.ts";
 import {
-  createPendingCallRegistry,
-  type PendingCall,
-  type PendingCallRegistry,
-} from "./pendingCallRegistry.ts";
-import { createReadyQueue, type ReadyQueue } from "./readyQueue.ts";
+  createInvocationLedger,
+  type InvocationLedger,
+} from "./invocationLedger.ts";
 
 /**
  * iframecall host controller를 생성한다.
@@ -60,8 +58,6 @@ export function createIframeCallController<
   const readyPolicy = options.readyPolicy ?? "queue";
   const readyQueueLimit = options.readyQueueLimit ?? Number.POSITIVE_INFINITY;
 
-  const pending = createPendingCallRegistry(transport, targetOrigin);
-  const queue = createReadyQueue();
   const notifyRegistry = createNotifyHandlerRegistry();
 
   // debug 구독자 집합. opt-in 개발용이므로 기본 구독자는 없다.
@@ -79,13 +75,22 @@ export function createIframeCallController<
     }
   }
 
+  const ledger = createInvocationLedger({
+    transport,
+    targetOrigin,
+    readyPolicy,
+    readyQueueLimit,
+    onCommandSent(command, args) {
+      emitDebug({ type: "commandSentToIframe", command, args });
+    },
+  });
+
   const lifecycle = createControllerLifecycle({
     readyTimeoutMs,
     onTerminate(error) {
       const buildLifecycleError = (command: string) =>
         createCallLifecycleError(error, command);
-      pending.rejectAll(buildLifecycleError);
-      queue.rejectAll(buildLifecycleError);
+      ledger.terminate(buildLifecycleError);
     },
   });
 
@@ -94,8 +99,7 @@ export function createIframeCallController<
       lifecycle,
       allowedOrigins,
       transport,
-      pending,
-      queue,
+      ledger,
       notifyRegistry,
       logger: options.logger,
       emitDebug,
@@ -116,62 +120,11 @@ export function createIframeCallController<
       return Promise.reject(terminatedError);
     }
 
-    if (!lifecycle.isReady() && readyPolicy === "reject") {
-      return Promise.reject(
-        createIframeCallError("not_ready", "Iframe is not ready.", {
-          command: cmd,
-        }),
-      );
-    }
-
-    const id = generateId();
     const timeoutMs = callOptions?.timeoutMs ?? defaultTimeoutMs;
 
-    return new Promise((resolve, reject) => {
-      const timeoutId =
-        timeoutMs === 0 || timeoutMs === Number.POSITIVE_INFINITY
-          ? null
-          : setTimeout(() => {
-              pending.delete(id);
-              queue.delete(id);
-              reject(
-                createIframeCallError("timeout", "Command timed out.", {
-                  command: cmd,
-                  details: { timeoutMs },
-                }),
-              );
-            }, timeoutMs);
-
-      const call: PendingCall = {
-        command: cmd,
-        timeoutId,
-        resolve: resolve as (value: unknown) => void,
-        reject,
-      };
-
-      if (!lifecycle.isReady()) {
-        if (queue.size() >= readyQueueLimit) {
-          if (timeoutId !== null) clearTimeout(timeoutId);
-          reject(
-            createIframeCallError("queue_overflow", "Ready queue overflow.", {
-              command: cmd,
-              details: { readyQueueLimit },
-            }),
-          );
-          return;
-        }
-
-        queue.add(id, {
-          ...call,
-          args,
-          transfer: callOptions?.transfer,
-        });
-        return;
-      }
-
-      emitDebug({ type: "commandSentToIframe", command: cmd, args });
-      pending.add(id, call);
-      pending.post(id, cmd, args, callOptions?.transfer);
+    return ledger.invoke(generateId, cmd, args, {
+      timeoutMs,
+      transfer: callOptions?.transfer,
     }) as Promise<CommandResult<TCommands[typeof cmd]>>;
   };
 
@@ -244,8 +197,7 @@ type TransportRouterDeps = {
   readonly lifecycle: ControllerLifecycle;
   readonly allowedOrigins: ReadonlySet<string>;
   readonly transport: IframeCallTransport;
-  readonly pending: PendingCallRegistry;
-  readonly queue: ReadyQueue;
+  readonly ledger: InvocationLedger;
   readonly notifyRegistry: NotifyHandlerRegistry;
   readonly logger: IframeCallLogger | undefined;
   readonly emitDebug: (event: HostDebugEvent) => void;
@@ -260,8 +212,7 @@ function createTransportRouter(deps: TransportRouterDeps) {
     lifecycle,
     allowedOrigins,
     transport,
-    pending,
-    queue,
+    ledger,
     notifyRegistry,
     logger,
     emitDebug,
@@ -282,8 +233,7 @@ function createTransportRouter(deps: TransportRouterDeps) {
 
     if (parsed?.type === "response") {
       const responseMessage = parsed.message;
-      const command = pending.getCommand(responseMessage.id);
-      pending.settle(responseMessage.id, responseMessage);
+      const command = ledger.settle(responseMessage);
       if (command !== undefined) {
         if (responseMessage.ok) {
           emitDebug({
@@ -307,7 +257,7 @@ function createTransportRouter(deps: TransportRouterDeps) {
     const { event: notifyEvent, payload } = parsed.message;
 
     if (notifyEvent === "ready") {
-      handleReadyNotify(payload, lifecycle, queue, pending, logger, emitDebug);
+      handleReadyNotify(payload, lifecycle, ledger, logger, emitDebug);
       return;
     }
 
@@ -345,8 +295,7 @@ function createTransportRouter(deps: TransportRouterDeps) {
 function handleReadyNotify(
   payload: unknown,
   lifecycle: ControllerLifecycle,
-  queue: ReadyQueue,
-  pending: PendingCallRegistry,
+  ledger: InvocationLedger,
   logger: IframeCallLogger | undefined,
   emitDebug: (event: HostDebugEvent) => void,
 ): void {
@@ -368,15 +317,7 @@ function handleReadyNotify(
 
   emitDebug({ type: "readyReceived", payload });
   lifecycle.markReady();
-  queue.flush((id, call) => {
-    emitDebug({
-      type: "commandSentToIframe",
-      command: call.command,
-      args: call.args,
-    });
-    pending.add(id, call);
-    pending.post(id, call.command, call.args, call.transfer);
-  });
+  ledger.acceptReady();
 }
 
 /**
