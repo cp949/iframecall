@@ -10,8 +10,8 @@ import {
   createIframeCallErrorResponse,
   createIframeCallNotify,
   createIframeCallSuccessResponse,
-  parseIframeCallMessage,
 } from "../core/messages.ts";
+import { validateInbound } from "../core/inboundValidation.ts";
 import { createParentWindowTransport } from "../core/transport.ts";
 import type {
   CommandHandler,
@@ -110,19 +110,12 @@ export function createIframeCallRunner<
 
   const unsubscribeTransport = transport.subscribe((event) => {
     if (disposing || disposed) return;
-
-    if (!allowedOrigins.has(event.origin)) {
-      return;
-    }
-
-    if (
-      transport.expectedSource !== undefined &&
-      event.source !== transport.expectedSource
-    ) {
-      return;
-    }
-
-    const parsed = parseIframeCallMessage(event.data);
+    const inbound = validateInbound(event, {
+      allowedOrigins,
+      expectedSource: transport.expectedSource,
+    });
+    if (!inbound.accepted) return;
+    const parsed = inbound.message;
 
     if (parsed?.type === "notify") {
       // host -> iframe notification 수신은 RM-006 scope 밖이지만, debug 관찰은 가능하게 둔다.

@@ -8,8 +8,8 @@ import {
 } from "../core/errors.ts";
 import {
   createIframeCallRequest,
-  parseIframeCallMessage,
 } from "../core/messages.ts";
+import { validateInbound } from "../core/inboundValidation.ts";
 import {
   createIframeWindowTransport,
   type IframeCallTransport,
@@ -220,16 +220,12 @@ function createTransportRouter(deps: TransportRouterDeps) {
 
   return (event: IframeCallTransportEvent) => {
     if (lifecycle.isTerminated()) return;
-    if (!allowedOrigins.has(event.origin)) return;
-
-    if (
-      transport.expectedSource !== undefined &&
-      event.source !== transport.expectedSource
-    ) {
-      return;
-    }
-
-    const parsed = parseIframeCallMessage(event.data);
+    const inbound = validateInbound(event, {
+      allowedOrigins,
+      expectedSource: transport.expectedSource,
+    });
+    if (!inbound.accepted) return;
+    const parsed = inbound.message;
 
     if (parsed?.type === "response") {
       const responseMessage = parsed.message;

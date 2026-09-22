@@ -146,4 +146,53 @@ describe("검증: runner inbound origin 거부 정책", () => {
     // IframeCallResponse 성공 envelope의 결과값 필드는 `value`다.
     expect(responses[0]).toMatchObject({ id: "id-3", ok: true, value: 11 });
   });
+
+  it("동작: 정상 origin이지만 source가 다르거나 message가 malformed이면 handler와 response를 만들지 않는다", async () => {
+    const { host, iframe, hostSource } = createLinkedTransports();
+    const handledCommands: string[] = [];
+    const responses: unknown[] = [];
+
+    class TrackingCommands {
+      async sum(a: number, b: number) {
+        handledCommands.push("sum");
+        return a + b;
+      }
+    }
+
+    createIframeCallRunner({
+      targetOrigin: "https://host.example.com",
+      transport: iframe,
+      Commands: TrackingCommands,
+    });
+
+    host.subscribe((event) => {
+      const parsed = parseIframeCallMessage(event.data);
+      if (parsed?.type === "response") responses.push(parsed.message);
+    });
+
+    // origin이 정상이어도 expected source와 다르면 command dispatch를 차단한다.
+    iframe.emit({
+      data: {
+        protocol: "iframecall",
+        version: 1,
+        id: "id-forged-source",
+        cmd: "sum",
+        args: [1, 2],
+      },
+      origin: "https://host.example.com",
+      source: { name: "forged-host" },
+    });
+
+    // source까지 정상이어도 message parser를 통과하지 못하면 response를 만들지 않는다.
+    iframe.emit({
+      data: { protocol: "iframecall", version: 1, malformed: true },
+      origin: "https://host.example.com",
+      source: hostSource,
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(handledCommands).toEqual([]);
+    expect(responses).toEqual([]);
+  });
 });

@@ -120,4 +120,50 @@ describe("검증: controller inbound origin 거부 정책", () => {
 
     await expect(invokePromise).resolves.toBe(3);
   });
+
+  it("동작: 정상 origin이지만 source가 다르거나 message가 malformed이면 pending invoke를 settle하지 않고 정상 response만 처리한다", async () => {
+    const { host, iframe, iframeSource } = createLinkedTransports();
+
+    const controller = createIframeCallController<TestCommands>({
+      iframe: {} as HTMLIFrameElement,
+      targetOrigin: "https://editor.example.com",
+      generateId: () => "id-1",
+      transport: host,
+    });
+
+    iframe.post(
+      createIframeCallNotify("ready", { protocolVersion: 1 }),
+      "https://host.example.com",
+    );
+    await controller.ready;
+
+    const invokePromise = controller.invoke("sum", [1, 2], { timeoutMs: 0 });
+
+    // origin은 정상이어도 expected source와 다르면 forged response를 무시한다.
+    host.emit({
+      data: createIframeCallSuccessResponse("id-1", 99),
+      origin: "https://editor.example.com",
+      source: { name: "forged-iframe" },
+    });
+    await expect(
+      Promise.race([invokePromise, Promise.resolve("pending")]),
+    ).resolves.toBe("pending");
+
+    // source까지 정상이어도 wire envelope이 아니면 ledger를 건드리지 않는다.
+    host.emit({
+      data: { protocol: "iframecall", version: 1, malformed: true },
+      origin: "https://editor.example.com",
+      source: iframeSource,
+    });
+    await expect(
+      Promise.race([invokePromise, Promise.resolve("pending")]),
+    ).resolves.toBe("pending");
+
+    iframe.post(
+      createIframeCallSuccessResponse("id-1", 3),
+      "https://host.example.com",
+    );
+
+    await expect(invokePromise).resolves.toBe(3);
+  });
 });
