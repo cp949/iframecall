@@ -12,16 +12,16 @@
   },
   "dependencies": {
     "@cp949/iframecall": "workspace:*",
-    "next": "16.3.2",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "next": "16.3.6",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@types/node": "^24.13.3",
-    "@types/react": "19.2.18",
-    "@types/react-dom": "19.2.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
     "eslint": "^9.39.5",
     "typescript": "6.0.3"
   }
