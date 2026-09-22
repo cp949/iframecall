@@ -97,6 +97,7 @@ export function useIframeCallRunner<
   const [isActive, setIsActive] = useState(false);
 
   useEffect(() => {
+    if (runnerRef.current !== null) return;
     const opts = optionsRef.current;
 
     const runner = createIframeCallRunner<TCommands, TNotificationsToHost>({
@@ -109,7 +110,9 @@ export function useIframeCallRunner<
     });
 
     runnerRef.current = runner;
-    setIsActive(true);
+    // 이번 effect가 만든 runner가 현재 lifecycle이면 활성 상태를 노출한다.
+    // StrictMode cleanup/re-run에서 폐기된 runner가 state를 갱신하지 않는다.
+    if (runnerRef.current === runner) setIsActive(true);
 
     // debugLog 옵션이 truthy면 consoleDebugLogger를 mount 동안 자동 구독한다.
     let unsubscribeDebug: (() => void) | null = null;
@@ -131,7 +134,7 @@ export function useIframeCallRunner<
       // 실제 활성/비활성 판단은 commands/runner reference 노출 여부로 한다.
       if (unsubscribeDebug !== null) unsubscribeDebug();
       runner.dispose("react_unmount");
-      runnerRef.current = null;
+      if (runnerRef.current === runner) runnerRef.current = null;
     };
   }, []); // runner lifecycle은 mount/unmount에 묶인다
 

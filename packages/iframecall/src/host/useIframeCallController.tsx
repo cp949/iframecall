@@ -87,6 +87,10 @@ export function useIframeCallController<
   const [terminationError, setTerminationError] =
     useState<SerializedIframeCallError | null>(null);
   const [readyError, setReadyError] = useState<unknown>(null);
+  const controllerRef = useRef<IframeCallController<
+    TCommands,
+    TNotificationsFromIframe
+  > | null>(null);
 
   const iframeRef = useCallback((node: HTMLIFrameElement | null) => {
     iframeElRef.current = node;
@@ -95,6 +99,7 @@ export function useIframeCallController<
 
   useEffect(() => {
     if (!iframeAttached) return;
+    if (controllerRef.current !== null) return;
     const iframeEl = iframeElRef.current;
     if (iframeEl === null) return;
 
@@ -112,16 +117,23 @@ export function useIframeCallController<
       readyTimeoutMs: opts.readyTimeoutMs,
       transport: opts.transport,
     });
+    const controller = next as IframeCallController<
+      TCommands,
+      TNotificationsFromIframe
+    >;
+    controllerRef.current = controller;
 
     // effect cleanup 이후 도착하는 promise resolve가 stale React state를 건드리지 않게 한다.
     let cancelled = false;
 
-    setController(
-      next as IframeCallController<TCommands, TNotificationsFromIframe>,
-    );
-    setStatus("pending");
-    setTerminationError(null);
-    setReadyError(null);
+    // ref가 이번 effect가 생성한 controller일 때만 mount state를 초기화한다.
+    // StrictMode cleanup/re-run 또는 iframe 재연결에서 이전 lifecycle이 state를 덮어쓰지 않는다.
+    if (controllerRef.current === controller) {
+      setController(controller);
+      setStatus("pending");
+      setTerminationError(null);
+      setReadyError(null);
+    }
 
     next.ready.then(
       () => {
@@ -161,6 +173,7 @@ export function useIframeCallController<
         unsubscribeDebug();
       }
       void next.dispose("host-unmount");
+      if (controllerRef.current === controller) controllerRef.current = null;
       setController(null);
     };
   }, [iframeAttached]);

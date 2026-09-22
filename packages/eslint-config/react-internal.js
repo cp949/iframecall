@@ -1,4 +1,4 @@
-import pluginReact from "eslint-plugin-react";
+import eslintReact from "@eslint-react/eslint-plugin";
 import pluginReactHooks from "eslint-plugin-react-hooks";
 import globals from "globals";
 import { config as baseConfig } from "./base.js";
@@ -6,10 +6,10 @@ import { config as baseConfig } from "./base.js";
 /** @type {import("eslint").Linter.Config[]} */
 export const config = [
   ...baseConfig,
-  pluginReact.configs.flat.recommended,
+  eslintReact.configs["recommended-typescript"],
+  eslintReact.configs["disable-conflict-eslint-plugin-react-hooks"],
   {
     languageOptions: {
-      ...pluginReact.configs.flat.recommended.languageOptions,
       globals: {
         ...globals.serviceworker,
         ...globals.browser,
@@ -25,7 +25,6 @@ export const config = [
       // v7 recommended에는 React Compiler 규칙이 추가됐다. 기존 Hooks 정책만 유지한다.
       "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "warn",
-      "react/react-in-jsx-scope": "off",
     },
   },
 ];
