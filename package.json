@@ -12,13 +12,14 @@
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
-    "check:gate-tests": "node --test scripts/test/*.test.mjs",
-    "verify": "pnpm lint && pnpm build && pnpm check-types && pnpm test && pnpm check:gate-tests",
-    "verify:release": "turbo run lint --force && pnpm build:release && turbo run check-types --force && turbo run test --force && pnpm check:gate-tests",
-    "publish:npm": "node scripts/publish-packages.mjs"
+    "verify": "pnpm lint && pnpm build && pnpm check-types && pnpm test",
+    "verify:release": "turbo run lint --force && pnpm build:release && turbo run check-types --force && turbo run test --force",
+    "release-it": "cd packages/iframecall && release-it"
   },
   "devDependencies": {
+    "@release-it/keep-a-changelog": "8.0.1",
     "prettier": "3.9.8",
+    "release-it": "21.1.0",
     "turbo": "^2.10.11",
     "typescript": "6.0.3"
   },

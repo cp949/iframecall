@@ -26,7 +26,7 @@ iframecall/
 
 ## 개발
 
-요구 사항: Node.js `^20.19.0 || >=22.13.0`, pnpm `10.34.5`.
+요구 사항: Node.js `>=22.13.0`, pnpm `11.27.1`.
 
 ```sh
 # 의존성 설치
@@ -41,7 +41,7 @@ pnpm dev:r19
 # React 18 데모 한 쌍 실행 (host:3302, iframe:3303)
 pnpm dev:r18
 
-# 전체 검증 (lint, build, typecheck, test, 배포 도구 gate test)
+# 전체 검증 (lint, build, typecheck, test)
 pnpm verify
 
 # 포맷팅
@@ -50,9 +50,9 @@ pnpm format
 
 ## 배포
 
-npm 배포는 유지보수자용 대화형 도구로 진행한다. 사전 검증, dry-run, 실제 배포, registry 확인, 버전 태그 push 절차는 [RELEASING.md](./RELEASING.md)를 따른다.
+npm 배포는 루트에서 `pnpm release-it`으로 진행한다([release-it](https://github.com/release-it/release-it)). `packages/iframecall`의 버전 bump, CHANGELOG 정리, npm publish, 커밋·태그·push를 수행한다. 절차는 [RELEASING.md](./RELEASING.md)를 따른다.
 
-> 실제 npm 배포와 `origin`으로의 태그 push는 외부 쓰기 작업이다.
+> 실제 npm 배포와 `origin`으로의 push는 외부 쓰기 작업이다.
 
 ## 라이선스
 
