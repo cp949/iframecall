@@ -310,6 +310,8 @@ const { iframeRef, controller, status } = useIframeCallController<AppCommands>({
 return <iframe ref={iframeRef} sandbox="allow-scripts" srcDoc={runnerHtml} />;
 ```
 
+> **iframe 안에서 신뢰하지 않는 코드가 실행되면 채널 전체를 신뢰하지 않는 상대로 취급한다.** 아래 "보안 근거"를 먼저 읽는다.
+
 이 모드의 동작:
 
 - 송신: 내부적으로 `targetOrigin="*"`로 보낸다. 대상은 해당 iframe의 `contentWindow`뿐이다.

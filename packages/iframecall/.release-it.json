@@ -12,7 +12,9 @@
     "push": true
   },
   "npm": {
-    "publish": true
+    "publish": true,
+    "publishPackageManager": "pnpm",
+    "publishArgs": ["--no-git-checks"]
   },
   "github": {
     "release": false

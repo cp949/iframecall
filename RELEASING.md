@@ -42,10 +42,12 @@ release-it이 수행하는 순서:
 2. 버전 선택 프롬프트 → `packages/iframecall/package.json`의 `version`을 올린다.
 3. `CHANGELOG.md`의 `[Unreleased]` 항목을 `[<version>] - <날짜>` 섹션으로 옮기고, 빈 `[Unreleased]`를 다시 둔다.
 4. 변경 파일을 stage한다(`git add . --update`, `packages/iframecall` 범위).
-5. `npm publish` — `prepublishOnly`가 `dist`를 다시 빌드한다. 2FA가 켜져 있으면 OTP를 묻는다.
+5. `pnpm publish . --tag <dist-tag> --no-git-checks`(일반 버전은 `latest`) — `prepublishOnly`가 `dist`를 다시 빌드한다. 2FA가 켜져 있으면 pnpm이 OTP 입력(또는 web 인증)을 요청한다.
+   - pnpm을 쓰는 이유: manifest의 `workspace:*`를 실제 버전으로 바꿔 배포한다. (`@repo/*` devDependencies는 `0.0.0`으로 들어간다. npm에 없는 private 패키지지만 devDependencies라 사용자 설치에는 영향이 없다.)
+   - `--no-git-checks`가 필요한 이유: 이 시점에는 bump 변경이 stage만 된 상태이고, pnpm의 기본 배포 branch 검사가 `dev` 배포를 막는다.
 6. `chore: @cp949/iframecall v<version> 배포` 커밋, annotated tag `v<version>` 생성, `origin`에 push(`--follow-tags`).
 
-npm publish가 git commit·tag보다 먼저 실행된다(release-it 21 lifecycle).
+publish가 git commit·tag보다 먼저 실행된다(release-it 21 lifecycle).
 
 각 단계 전에 release-it이 확인 프롬프트를 띄운다. GitHub Release는 만들지 않는다.
 

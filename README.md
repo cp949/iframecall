@@ -50,7 +50,7 @@ pnpm format
 
 ## 배포
 
-npm 배포는 루트에서 `pnpm release-it`으로 진행한다([release-it](https://github.com/release-it/release-it)). `packages/iframecall`의 버전 bump, CHANGELOG 정리, npm publish, 커밋·태그·push를 수행한다. 절차는 [RELEASING.md](./RELEASING.md)를 따른다.
+npm 배포는 루트에서 `pnpm release-it`으로 진행한다([release-it](https://github.com/release-it/release-it)). `packages/iframecall`의 버전 bump, CHANGELOG 정리, npm 배포(`pnpm publish`), 커밋·태그·push를 수행한다. 절차는 [RELEASING.md](./RELEASING.md)를 따른다.
 
 > 실제 npm 배포와 `origin`으로의 push는 외부 쓰기 작업이다.
 
