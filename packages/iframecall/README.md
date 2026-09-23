@@ -32,7 +32,7 @@ yarn add @cp949/iframecall
 | `@cp949/iframecall/host`   | 부모 페이지(host)에서 iframe을 제어할 때          |
 | `@cp949/iframecall/iframe` | 임베드된 페이지(iframe)에서 host의 호출을 받을 때 |
 
-호스트와 iframe은 서로 다른 origin에서 실행되며, 각 진입점은 그쪽에서만 필요한 API와 타입만 노출한다.
+host와 iframe은 서로 다른 origin에서도 동작하며, 각 진입점은 그쪽에서만 필요한 API와 타입만 노출한다.
 
 ## 빠른 시작
 
@@ -212,6 +212,8 @@ export function IframePage() {
 ```text
 host                                    iframe
   │                                       │
+  │  controller 생성 (listener 등록)       │
+  │  ── notify host:ready-query ─────────▶│ (ready 전이면 무시)
   │  <iframe src="...">                   │
   │──────────────────────────────────────▶│ mount
   │                                       │ commands._sendLifecycleReady() → sendLifecycleReady()
@@ -226,10 +228,9 @@ host                                    iframe
 ```
 
 - iframe이 마운트되면 `commands._sendLifecycleReady()`가 `sendLifecycleReady()`를 통해 transport ready 신호를 보낸다.
-- host의 `controller.invoke`는 ready 시점까지 대기한 뒤 전송된다.
+- ready 전에 호출한 `controller.invoke`는 기본값(`readyPolicy: "queue"`)에서 ready까지 대기한 뒤 전송된다. `readyPolicy: "reject"`면 즉시 거부된다.
 - **ready 재요청(ready-query)**: controller는 `message` listener를 등록한 직후 iframe에 `host:ready-query` notify를 한 번 보낸다. 이미 `sendLifecycleReady()`를 호출한 runner는 ready(`requested: true`)로 다시 응답한다. 그래서 SSR된 `<iframe src>`처럼 iframe이 host hydration보다 먼저 로드되어 첫 ready가 유실돼도 controller가 ready에 도달한다. 앱이 아직 ready 전이면 runner는 query를 무시하고, 이후 앱이 보내는 ready로 연결된다.
   - host와 runner가 모두 이 기능을 포함한 버전일 때만 복구된다. 이전 버전 runner는 query를 무시하므로, 그 경우에는 iframe `src`를 controller가 생긴 뒤 설정한다(`src={controller ? IFRAME_URL : undefined}`). 같은 요소의 `src` 변경은 `contentWindow` identity를 유지하므로 source 검사에 영향이 없다.
-
 - 응답은 Promise로 돌아오며, iframe 측 메서드가 throw하면 host 쪽 Promise는 reject된다.
 - iframe → host 단방향 알림은 `sendNotificationToHost`로 보내고, host 쪽에서 `controller.onNotificationFromIframe`으로 받는다.
 - **라이프사이클 채널과 도메인 채널은 책임이 다르다.** `ready`/`terminated`는 transport 신호 전용이고, 도메인 알림(`status-changed` 등)에는 `"ready"` 같은 lifecycle 의미를 담지 않는다.
@@ -239,12 +240,12 @@ host                                    iframe
 
 ### host 진입점
 
-| export                        | 종류    | 설명                                                             |
-| ----------------------------- | ------- | ---------------------------------------------------------------- |
-| `useIframeCallController`     | hook    | host용 React 훅. `iframeRef`, `controller`, `status`를 반환한다. |
-| `createIframeCallController`  | factory | 훅 없이 컨트롤러를 직접 만들 때 사용                             |
-| `createIframeWindowTransport` | factory | 커스텀 트랜스포트 구성용                                         |
-| `consoleDebugLogger`          | util    | 디버그 이벤트를 콘솔에 출력하는 로거                             |
+| export                        | 종류    | 설명                                                                                               |
+| ----------------------------- | ------- | -------------------------------------------------------------------------------------------------- |
+| `useIframeCallController`     | hook    | host용 React 훅. `iframeRef`, `controller`, `status`, `terminationError`, `readyError`를 반환한다. |
+| `createIframeCallController`  | factory | 훅 없이 컨트롤러를 직접 만들 때 사용                                                               |
+| `createIframeWindowTransport` | factory | 커스텀 트랜스포트 구성용                                                                           |
+| `consoleDebugLogger`          | util    | 디버그 이벤트를 콘솔에 출력하는 로거                                                               |
 
 훅이 반환하는 `controller`의 주요 멤버:
 
@@ -278,22 +279,22 @@ host                                    iframe
 
 `onStatusChange`처럼 prefix가 없으면서 host에서 호출하면 안 되는 메서드는 반드시 `_` prefix를 붙여야 한다. 그렇지 않으면 host가 `controller.invoke("onStatusChange", [...])`로 직접 호출할 수 있다.
 
-> 알림은 iframe → host 단방향이다. host → iframe 알림은 라이브러리 외부에서 `postMessage`로 직접 처리하거나, host에서 커맨드를 호출해 처리한다.
+> 도메인 알림은 iframe → host 단방향이다(라이브러리 내부 lifecycle 메시지 `host:ready-query`는 예외). host → iframe 도메인 알림은 라이브러리 외부에서 `postMessage`로 직접 처리하거나, host에서 커맨드를 호출해 처리한다.
 
 ### 공통 타입
 
-`CommandMap`, `IframeCallController`, `IframeCallRunnerHandle`, `IframeCallTransport`, `ReadyPolicy`, `SerializedIframeCallError` 등 핵심 타입은 `host`/`iframe` 양쪽에서 모두 export된다.
+`CommandMap`, `IframeCallTransport`, `ReadyPolicy`, `SerializedIframeCallError` 등 공통 타입은 `host`/`iframe` 양쪽에서 export된다. 역할 전용 타입은 한쪽에서만 export된다: `IframeCallController`는 `host`, `IframeCallRunnerHandle`은 `iframe`.
 
 ## 보안: origin 검증
 
-`targetOrigin`과 `allowedOrigins`는 반드시 명시적으로 지정한다. 와일드카드(`*`)는 사용하지 않는다.
+`targetOrigin`은 명시적인 origin으로 지정한다. 와일드카드(`*`)는 사용하지 않는다. `allowedOrigins`를 생략하면 `[targetOrigin]`을 쓴다. opaque origin 모드에서는 둘 다 지정하지 않는다.
 
 | 옵션             | 의미                                      |
 | ---------------- | ----------------------------------------- |
 | `targetOrigin`   | `postMessage` 전송 시 사용할 대상 origin  |
 | `allowedOrigins` | 수신 시 허용할 origin 화이트리스트 (배열) |
 
-수신 메시지의 `event.origin`이 화이트리스트에 없으면 무시된다. host의 기본 transport는 `event.source`가 대상 iframe의 `contentWindow`인지도 함께 검사한다.
+수신 메시지의 `event.origin`이 화이트리스트에 없으면 무시된다. host의 기본 transport는 `event.source`가 대상 iframe의 `contentWindow`인지도 함께 검사한다. 단, 일반 모드에서 controller 생성 시점에 iframe이 문서에 붙지 않아 `contentWindow`가 없으면 source 검사를 생략한다. controller는 iframe을 문서에 붙인 뒤 만든다(훅은 ref 연결 후 생성하므로 해당 없음).
 
 `targetOrigin`에 `""`, `"*"`, `"null"`을 넘기면 `invalid_origin` 에러를 던진다. origin이 `"null"`인 iframe은 아래 opaque origin 모드를 사용한다.
 
@@ -338,7 +339,7 @@ controller는 iframe 요소 하나에 묶인다. 같은 요소의 `src` 변경�
 
 ## 디버깅
 
-훅 옵션에 `debugLog: true`를 주면 송수신 이벤트가 콘솔에 출력된다. 또는 `consoleDebugLogger`를 직접 전달할 수도 있다.
+훅 옵션에 `debugLog: true`(또는 `{ prefix }`)를 주면 송수신 이벤트가 콘솔에 출력된다. 훅 없이 쓸 때는 `controller.debug.subscribe(consoleDebugLogger())`로 같은 출력을 붙인다.
 
 ```ts
 useIframeCallController({

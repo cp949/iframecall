@@ -234,7 +234,8 @@ target은 런타임 API를 polyfill하지 않으므로 성공하더라도 실제
 
 - same-origin 및 cross-origin ready handshake
 - 성공값, async 성공값, 직렬화된 오류의 request/response 왕복
-- notification 양방향 처리
+- iframe → host notification 처리(host → iframe 도메인 알림은 미지원)
+- host 구독 전 유실된 ready의 ready-query 복구
 - timeout, duplicate ready, dispose/terminated 처리
 - 잘못된 origin 및 다른 `event.source` 거부
 - opaque origin(`sandbox="allow-scripts"`) iframe의 ready handshake와 다른 opaque frame 메시지 거부
