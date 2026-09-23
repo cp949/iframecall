@@ -6,6 +6,8 @@
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-23
+
 ### Added
 
 - host controller와 `useIframeCallController`에 `opaqueOrigin: true` 옵션을 추가했습니다. `sandbox`로 격리된 opaque origin(`"null"`) iframe과 통신합니다. 송신은 `"*"`, 수신은 origin `"null"`과 `contentWindow` source가 모두 일치할 때만 받습니다.
