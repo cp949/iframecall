@@ -323,7 +323,9 @@ return <iframe ref={iframeRef} sandbox="allow-scripts" srcDoc={runnerHtml} />;
 보안 근거:
 
 - **source 비교가 필수인 이유**: origin `"null"`은 다른 사이트의 모든 sandboxed frame이 공유하는 값이다. origin만으로는 대상 iframe과 다른 opaque frame을 구별할 수 없다. 그래서 이 모드는 source를 비교할 수 없는 설정을 생성 시점에 거부한다.
-- **`"*"` 송신 위험**: iframe이 host가 모르는 문서로 navigation하면 그 문서가 command와 인자를 받는다. iframe의 `src`/`srcdoc`는 host가 통제하므로 이 위험을 수용한다. 신뢰할 수 없는 URL로 navigation할 수 있는 iframe에는 이 모드를 쓰지 않는다.
+- **source 검사는 iframe 요소를 인증할 뿐 문서를 인증하지 않는다**: `sandbox="allow-scripts"`는 iframe 문서가 자기 자신을 navigation하는 것(`location.href = ...`)을 막지 않는다. 이동한 문서도 sandbox flag를 이어받아 origin이 `"null"`이고, 같은 요소라 `contentWindow`도 같다. 따라서 그 문서는 host의 origin·source 검사를 모두 통과하고, `"*"`로 보낸 command와 인자를 받으며, 응답과 notify를 보낼 수 있다. (headless Chromium에서 확인)
+- **수용 조건**: 위 위험은 iframe 안에서 신뢰하지 않는 코드가 돌지 않을 때만 수용할 수 있다. 이 경우 `src`/`srcdoc`는 host가 통제하므로 iframe이 모르는 문서로 이동하지 않는다.
+- **신뢰하지 않는 코드를 실행하는 iframe**(사용자 코드 실행 샌드박스 등)에서는 채널 전체를 신뢰하지 않는 상대로 취급한다. command 인자에 비밀이나 권한 토큰을 넣지 않고, 응답과 notify는 host에서 검증한다. 이 경우 iframe 안의 코드는 navigation 없이도 채널을 이미 제어할 수 있다. navigation은 그 제어를 iframe 밖의 문서로 넘기는 경로를 하나 더 만든다.
 
 iframe 쪽 runner는 바꿀 필요가 없다. parent(host)는 일반 origin이므로 runner는 지금처럼 `targetOrigin: HOST_ORIGIN`을 명시한다.
 
