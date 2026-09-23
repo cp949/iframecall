@@ -227,11 +227,8 @@ host                                    iframe
 
 - iframe이 마운트되면 `commands._sendLifecycleReady()`가 `sendLifecycleReady()`를 통해 transport ready 신호를 보낸다.
 - host의 `controller.invoke`는 ready 시점까지 대기한 뒤 전송된다.
-- **iframe `src`는 controller가 생긴 뒤 설정한다.** controller는 생성 시점에 `message` listener를 등록하고, iframe은 ready를 한 번만 보낸다. SSR된 `<iframe src>`처럼 iframe이 host hydration보다 먼저 로드되면 ready가 유실되어 `status`가 `pending`에 머문다. 같은 요소의 `src` 변경은 `contentWindow` identity를 유지하므로 source 검사에 영향이 없다.
-
-  ```tsx
-  <iframe ref={iframeRef} src={controller ? IFRAME_URL : undefined} />
-  ```
+- **ready 재요청(ready-query)**: controller는 `message` listener를 등록한 직후 iframe에 `host:ready-query` notify를 한 번 보낸다. 이미 `sendLifecycleReady()`를 호출한 runner는 ready(`requested: true`)로 다시 응답한다. 그래서 SSR된 `<iframe src>`처럼 iframe이 host hydration보다 먼저 로드되어 첫 ready가 유실돼도 controller가 ready에 도달한다. 앱이 아직 ready 전이면 runner는 query를 무시하고, 이후 앱이 보내는 ready로 연결된다.
+  - host와 runner가 모두 이 기능을 포함한 버전일 때만 복구된다. 이전 버전 runner는 query를 무시하므로, 그 경우에는 iframe `src`를 controller가 생긴 뒤 설정한다(`src={controller ? IFRAME_URL : undefined}`). 같은 요소의 `src` 변경은 `contentWindow` identity를 유지하므로 source 검사에 영향이 없다.
 
 - 응답은 Promise로 돌아오며, iframe 측 메서드가 throw하면 host 쪽 Promise는 reject된다.
 - iframe → host 단방향 알림은 `sendNotificationToHost`로 보내고, host 쪽에서 `controller.onNotificationFromIframe`으로 받는다.

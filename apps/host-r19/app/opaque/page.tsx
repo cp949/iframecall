@@ -77,10 +77,10 @@ function SandboxFrame({
           delay(5000)
         </button>
       </div>
-      {/* SSR된 iframe은 hydration 전에 ready를 보내 유실될 수 있다. controller 생성 뒤 src를 설정한다. */}
+      {/* SSR된 iframe이 hydration 전에 ready를 보내도 controller의 ready-query로 복구된다(TRP-0004). */}
       <iframe
         ref={iframeRef}
-        src={controller ? IFRAME_URL : undefined}
+        src={IFRAME_URL}
         sandbox="allow-scripts"
         style={{ width: "100%", height: 300, border: "1px solid #ddd" }}
         title="iframecall opaque origin demo"

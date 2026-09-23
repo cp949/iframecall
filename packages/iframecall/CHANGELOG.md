@@ -10,9 +10,11 @@
 
 - host controller와 `useIframeCallController`에 `opaqueOrigin: true` 옵션을 추가했습니다. `sandbox`로 격리된 opaque origin(`"null"`) iframe과 통신합니다. 송신은 `"*"`, 수신은 origin `"null"`과 `contentWindow` source가 모두 일치할 때만 받습니다.
 - `IframeCallControllerOriginOptions` 타입을 export합니다.
+- ready 재요청 handshake를 추가했습니다. host controller는 구독 직후 `host:ready-query` notify를 보내고, 이미 ready를 보낸 runner는 `requested: true` ready로 다시 응답합니다. iframe이 host보다 먼저 로드되어 첫 ready가 유실되던 문제(controller가 `pending`에 머묾)를 해결합니다. 이전 버전 host/runner와 섞여도 동작은 기존과 같습니다(`protocolVersion` 1 유지).
 
 ### Changed
 
+- host controller가 생성 시 `host:ready-query` notify를 한 번 전송합니다. `requested: true`가 붙은 중복 ready는 경고 없이 무시합니다.
 - `opaqueOrigin` 모드에서 `targetOrigin`/`allowedOrigins`를 함께 지정하거나 transport에 `expectedSource`가 없으면 `invalid_origin`을 던집니다. 기존 모드의 wildcard 거부 동작은 그대로입니다.
 
 ## [0.2.1] - 2026-08-25

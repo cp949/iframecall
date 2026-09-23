@@ -10,6 +10,7 @@ import {
   createIframeCallErrorResponse,
   createIframeCallNotify,
   createIframeCallSuccessResponse,
+  READY_QUERY_EVENT,
 } from "../core/messages.ts";
 import { validateInbound } from "../core/inboundValidation.ts";
 import { createParentWindowTransport } from "../core/transport.ts";
@@ -64,6 +65,9 @@ export function createIframeCallRunner<
   // disposed 상태에서는 notify/terminated outbound도 no-op이 된다.
   let disposed = false;
 
+  // 앱이 sendLifecycleReady를 한 번이라도 호출했는지. host의 ready-query에는 이 값이 true일 때만 응답한다.
+  let lifecycleReadySent = false;
+
   // debug 구독자 집합. opt-in 개발용이므로 기본 구독자는 없다.
   const debugSubscribers = new Set<(event: IframeDebugEvent) => void>();
 
@@ -88,6 +92,7 @@ export function createIframeCallRunner<
     },
     sendLifecycleReady(): void {
       if (disposing || disposed) return;
+      lifecycleReadySent = true;
       // ready payload는 라이브러리가 protocolVersion을 고정한다.
       safePost(createIframeCallNotify("ready", { protocolVersion: 1 }));
     },
@@ -118,6 +123,19 @@ export function createIframeCallRunner<
     const parsed = inbound.message;
 
     if (parsed?.type === "notify") {
+      // host 구독 전에 유실됐을 수 있는 ready를 다시 보낸다. lifecycle 메시지라 debug 이벤트로 흘리지 않는다.
+      if (parsed.message.event === READY_QUERY_EVENT) {
+        if (lifecycleReadySent) {
+          safePost(
+            createIframeCallNotify("ready", {
+              protocolVersion: 1,
+              requested: true,
+            }),
+          );
+        }
+        return;
+      }
+
       // host -> iframe notification 수신은 RM-006 scope 밖이지만, debug 관찰은 가능하게 둔다.
       emitDebug({
         type: "notificationReceivedFromHost",

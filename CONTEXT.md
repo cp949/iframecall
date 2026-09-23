@@ -15,3 +15,7 @@ _Avoid_: wildcard mode, null origin mode
 **Expected Source**:
 Transport가 수신 메시지의 `event.source`와 비교하는 송신자 Window 참조다. host 기본 transport는 생성 시점의 iframe `contentWindow`를 쓴다. iframe 요소를 교체하면 달라지므로 controller를 다시 만든다.
 _Avoid_: source window, peer window
+
+**Ready Query**:
+Host controller가 구독 직후 iframe에 보내는 `host:ready-query` notify다. 이미 ready를 보낸 runner는 `requested: true` ready로 다시 응답해, host 구독 전에 유실된 ready를 복구한다. 이전 버전 runner는 무시한다.
+_Avoid_: ping, handshake retry

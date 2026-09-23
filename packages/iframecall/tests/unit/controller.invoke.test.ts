@@ -11,6 +11,18 @@ import {
 } from "../../src/host/index.ts";
 import { createLinkedTransports } from "./testTransport.ts";
 
+/**
+ * host가 보낸 post 중 command request만 고른다.
+ * controller 생성 시 나가는 ready-query notify를 제외하고 invoke 전송만 검증할 때 사용한다.
+ */
+function getRequestPosts(
+  host: ReturnType<typeof createLinkedTransports>["host"],
+) {
+  return host
+    .getPosts()
+    .filter((post) => parseIframeCallMessage(post.message)?.type === "request");
+}
+
 type TestCommands = {
   sum: (a: number, b: number) => number;
 };
@@ -308,8 +320,9 @@ describe("검증: iframecall controller invoke와 ready 동작", () => {
     await expect(
       controller.invoke("sum", [1, 2], { timeoutMs: 0, transfer }),
     ).resolves.toBe(3);
-    expect(host.getPosts()).toHaveLength(1);
-    expect(host.getPosts()[0]?.transfer).toBe(transfer);
+    const requestPosts = getRequestPosts(host);
+    expect(requestPosts).toHaveLength(1);
+    expect(requestPosts[0]?.transfer).toBe(transfer);
   });
   it("동작: ready 전 queue된 invoke는 전달받은 transfer list를 transport에 그대로 전달한다", async () => {
     const { host, iframe } = createLinkedTransports();
@@ -334,7 +347,7 @@ describe("검증: iframecall controller invoke와 ready 동작", () => {
       timeoutMs: 0,
       transfer,
     });
-    expect(host.getPosts()).toHaveLength(0);
+    expect(getRequestPosts(host)).toHaveLength(0);
 
     iframe.post(
       createIframeCallNotify("ready", { protocolVersion: 1 }),
@@ -342,8 +355,9 @@ describe("검증: iframecall controller invoke와 ready 동작", () => {
     );
 
     await expect(queued).resolves.toBe(3);
-    expect(host.getPosts()).toHaveLength(1);
-    expect(host.getPosts()[0]?.transfer).toBe(transfer);
+    const requestPosts = getRequestPosts(host);
+    expect(requestPosts).toHaveLength(1);
+    expect(requestPosts[0]?.transfer).toBe(transfer);
   });
   it("동작: ready notify를 두 번 받으면 두 번째 ready는 무시하고 warning을 남긴다", async () => {
     const { host, iframe } = createLinkedTransports();

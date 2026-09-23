@@ -7,7 +7,9 @@ import {
   isSerializedIframeCallError,
 } from "../core/errors.ts";
 import {
+  createIframeCallNotify,
   createIframeCallRequest,
+  READY_QUERY_EVENT,
 } from "../core/messages.ts";
 import { validateInbound } from "../core/inboundValidation.ts";
 import {
@@ -114,6 +116,16 @@ export function createIframeCallController<
     unsubscribeTransport();
     notifyRegistry.clear();
   });
+
+  // 구독 이후에 보내야 한다. 이미 ready를 보낸 runner만 응답하므로, 구독 전에 유실된 ready를 복구한다.
+  try {
+    transport.post(
+      createIframeCallNotify(READY_QUERY_EVENT, null),
+      targetOrigin,
+    );
+  } catch (error) {
+    options.logger?.warn("iframecall postMessage failed.", error);
+  }
 
   const invoke: IframeCallController<
     TCommands,
@@ -303,7 +315,10 @@ function handleReadyNotify(
   emitDebug: (event: HostDebugEvent) => void,
 ): void {
   if (lifecycle.isReady()) {
-    logger?.warn("iframecall duplicate ready ignored.", payload);
+    // ready-query 응답으로 다시 온 ready는 정상 흐름이라 경고하지 않는다.
+    if (!(isRecord(payload) && payload.requested === true)) {
+      logger?.warn("iframecall duplicate ready ignored.", payload);
+    }
     return;
   }
 

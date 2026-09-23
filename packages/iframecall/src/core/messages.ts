@@ -9,6 +9,12 @@ import type {
   SerializedIframeCallError,
 } from "./types.ts";
 
+/**
+ * host가 controller 생성 직후 보내는 ready 재요청 notify 이름.
+ * host 구독 전에 도착해 유실된 ready를 복구하려고 runner에게 ready 재전송을 요청한다. 기존 runner는 무시한다.
+ */
+export const READY_QUERY_EVENT = "host:ready-query";
+
 /** 파싱 결과를 type tag로 구분한 discriminated union. 알 수 없는 형태는 null로 반환한다. */
 export type ParsedIframeCallMessage =
   | { readonly type: "request"; readonly message: IframeCallRequest }

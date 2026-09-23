@@ -40,7 +40,26 @@ controller가 생긴 뒤에 iframe `src`를 설정한다.
 
 같은 요소의 src 변경이라 `contentWindow` identity가 유지되어 source 검사에 문제없다([TRP-0002-contentwindow-identity-survives-navigation.md](TRP-0002-contentwindow-identity-survives-navigation.md)).
 
-## 근본 해결 후보 (결정 안 됨)
+## 근본 해결 (적용)
 
-- host가 controller 생성 직후 iframe에 "ready 요청" notify를 보내고 runner가 재응답. protocol 변경.
-- 라이브러리 README에 "iframe src는 controller 생성 후 설정" 계약을 명시. (반영됨: `packages/iframecall/README.md` 동작 흐름)
+ready 재요청 handshake. host와 runner가 모두 이 기능을 포함한 버전이면 회피 없이 복구된다.
+
+- host: `transport.subscribe()` 직후 `notify("host:ready-query")`를 한 번 보낸다(`controller.ts`).
+- runner: `sendLifecycleReady()` 호출 여부를 기억하고, query를 받으면 호출된 적이 있을 때만 `{ protocolVersion: 1, requested: true }` ready로 응답한다(`runner.ts`). query는 debug 이벤트로 흘리지 않는다.
+- host: `requested: true` 중복 ready는 경고 없이 무시한다.
+
+한 번 보내면 충분한 이유:
+
+- runner는 생성 시 동기적으로 구독한 뒤에야 앱이 `sendLifecycleReady()`를 호출할 수 있다. ready를 보낸 runner는 항상 이미 구독 중이다.
+- host는 구독 후 query를 보낸다. ready가 구독 뒤에 나가면 원래 흐름으로 받고, 구독 전에 나갔으면 query에 응답한다. 앱이 아직 준비 전이면 이후 ready를 받는다.
+
+호환성: 이전 버전 runner는 host notify를 무시하고, 이전 버전 host는 query를 보내지 않는다. 섞이면 기존 동작과 같다(`protocolVersion` 1 유지). 이전 버전 runner와 쓰면 위 회피가 여전히 필요하다.
+
+검증:
+
+- 단위 테스트 `tests/unit/readyQuery.test.ts` (유실 복구, 앱 준비 전 무시, 잘못된 origin·source 무시, dispose 후 무시, 기존 runner 호환, requested 중복 무경고).
+- headless Chromium(host=`next dev`, iframe=`next start`, 회피 코드 제거): 첫 ready t=238ms 유실, ready-query 응답 t=279ms로 `status ready`.
+
+## 남은 문제 (별도)
+
+- 같은 iframe 요소가 재로드/navigation되면 새 runner의 ready를 host가 중복 ready로 무시한다. 이 해결과 무관하다. 미기록(TRP 후보).
