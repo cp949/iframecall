@@ -41,5 +41,8 @@ yarn-error.log*
 .DS_Store
 *.pem
 
+# npm pack 산출물
+*.tgz
+
 # 작업용 plan/계획 문서 (superpowers writing-plans 산출물 등)
 docs/superpowers/
