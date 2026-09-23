@@ -1,10 +1,12 @@
 /**
  * useIframeCallController hook의 mount-once 패턴, dispose 호출, debugLog 옵션 동작을 잠근다.
  * StrictMode 사이클과 controller lifecycle promise resolve 시 stale state 회피도 검증한다.
+ * opaqueOrigin 옵션 전달과 iframe 요소 교체 시 key 리마운트 계약도 함께 잠근다.
  */
 import { act, render } from "@testing-library/react";
 import { StrictMode, useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createIframeCallNotify } from "../../src/host/index.ts";
 import { useIframeCallController } from "../../src/host/useIframeCallController.tsx";
 
 /**
@@ -194,5 +196,73 @@ describe("useIframeCallController", () => {
       unmount();
     });
     expect(true).toBe(true);
+  });
+
+  it("opaqueOrigin 모드에서 key로 리마운트하면 이전 controller를 dispose하고 새 iframe window에만 연결한다", async () => {
+    type Controller = NonNullable<
+      ReturnType<
+        typeof useIframeCallController<{ run(): Promise<void> }>
+      >["controller"]
+    >;
+    const controllers: Controller[] = [];
+
+    /**
+     * opaque origin iframe을 소유하는 컴포넌트.
+     * 부모가 key를 바꾸면 iframe 요소와 hook이 함께 새로 만들어진다.
+     */
+    function OpaqueFrame() {
+      const result = useIframeCallController<{ run(): Promise<void> }>({
+        opaqueOrigin: true,
+        readyTimeoutMs: 0,
+      });
+      useEffect(() => {
+        if (
+          result.controller !== null &&
+          !controllers.includes(result.controller)
+        ) {
+          controllers.push(result.controller);
+        }
+      });
+      return <iframe title="opaque" ref={result.iframeRef} />;
+    }
+
+    const { container, rerender } = render(<OpaqueFrame key={1} />);
+    const oldWindow = container.querySelector("iframe")?.contentWindow ?? null;
+    const oldController = controllers.at(-1);
+    if (oldController === undefined) throw new Error("controller가 없다");
+    const disposeSpy = vi.spyOn(oldController, "dispose");
+
+    rerender(<OpaqueFrame key={2} />);
+    const newWindow = container.querySelector("iframe")?.contentWindow ?? null;
+    const newController = controllers.at(-1);
+    if (newController === undefined) throw new Error("controller가 없다");
+
+    expect(newController).not.toBe(oldController);
+    expect(disposeSpy).toHaveBeenCalledWith("host-unmount");
+
+    const ready = createIframeCallNotify("ready", { protocolVersion: 1 });
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent("message", {
+          data: ready,
+          origin: "null",
+          source: oldWindow,
+        }),
+      );
+    });
+    await expect(
+      Promise.race([newController.ready, Promise.resolve("pending")]),
+    ).resolves.toBe("pending");
+
+    await act(async () => {
+      window.dispatchEvent(
+        new MessageEvent("message", {
+          data: ready,
+          origin: "null",
+          source: newWindow,
+        }),
+      );
+      await newController.ready;
+    });
   });
 });

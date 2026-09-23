@@ -1,5 +1,6 @@
 /**
  * 수신 이벤트의 origin, source, message 검증 순서와 source 미지정 정책을 검증한다.
+ * opaque origin 모드가 쓰는 source 필수 정책(requireSource)도 함께 다룬다.
  */
 import { describe, expect, it } from "vitest";
 import { validateInbound } from "../../src/core/inboundValidation.ts";
@@ -105,5 +106,24 @@ describe("검증: 수신 이벤트", () => {
         { allowedOrigins: policy.allowedOrigins },
       ),
     ).toMatchObject({ accepted: true, message: { type: "request" } });
+  });
+
+  it("requireSource가 켜져 있으면 expectedSource가 없을 때 source 단계에서 거부한다", () => {
+    expect(
+      validateInbound(
+        {
+          data: {
+            protocol: "iframecall",
+            version: 1,
+            id: "1",
+            cmd: "sum",
+            args: [],
+          },
+          origin: "null",
+          source: {},
+        },
+        { allowedOrigins: new Set(["null"]), requireSource: true },
+      ),
+    ).toEqual({ accepted: false, reason: "source" });
   });
 });

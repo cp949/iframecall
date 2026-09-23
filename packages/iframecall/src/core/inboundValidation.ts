@@ -8,6 +8,8 @@ import type { IframeCallTransportEvent } from "./transport.ts";
 export type InboundPolicy = {
   readonly allowedOrigins: ReadonlySet<string>;
   readonly expectedSource?: unknown;
+  /** true면 expectedSource가 없을 때도 source 단계에서 거부한다. opaque origin 모드가 사용한다. */
+  readonly requireSource?: boolean;
 };
 
 /** 수신 이벤트 검증 결과. 거부 시 최초로 실패한 검증 단계를 나타낸다. */
@@ -27,10 +29,11 @@ export function validateInbound(
     return { accepted: false, reason: "origin" };
   }
 
-  if (
-    policy.expectedSource !== undefined &&
-    event.source !== policy.expectedSource
-  ) {
+  if (policy.expectedSource === undefined) {
+    if (policy.requireSource === true) {
+      return { accepted: false, reason: "source" };
+    }
+  } else if (event.source !== policy.expectedSource) {
     return { accepted: false, reason: "source" };
   }
 

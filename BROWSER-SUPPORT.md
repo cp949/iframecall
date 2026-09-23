@@ -113,14 +113,15 @@ esbuild의 `target`은 지원하지 않는 **문법**을 가능한 범위에서 
 
 ### 조건부 사용
 
-| 기능                        | 조건                                                                                                                           | 대안/검증                                                                                                                                                                                                                                               |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `postMessage` payload       | structured clone 가능한 데이터만 보낸다. 함수, symbol, DOM node 등 복제할 수 없는 값은 API 경계에서 허용하지 않는다.           | 단순 object/array/primitive를 기본 계약으로 삼고, 새 타입은 양쪽 실제 브라우저에서 왕복 테스트한다. [HTML structured data 표준](https://html.spec.whatwg.org/multipage/structured-data.html#structured-cloning)                                         |
-| `postMessage` transfer list | concrete transferable 종류별로 matrix 전체 지원을 확인한다. 전송 후 원 소유자가 더 사용할 수 없다는 ownership 이전을 고려한다. | `ArrayBuffer`, `MessagePort` 등 타입별 테스트를 둔다. 지원을 확인하지 않은 transferable은 복사 가능한 payload로 대체한다. [HTML transferable objects 표준](https://html.spec.whatwg.org/multipage/structured-data.html#transferable-objects)            |
-| `postMessage` 호출 형식     | 현재처럼 `message, targetOrigin, transfer` 위치 인자를 사용한다. options-object overload는 별도 검증 전 사용하지 않는다.       | 명시적 `targetOrigin`을 유지한다. [HTML cross-document messaging 표준](https://html.spec.whatwg.org/multipage/web-messaging.html#web-messaging)                                                                                                         |
-| Web Crypto                  | request ID는 현재의 `getRandomValues(new Uint8Array(...))` 방식을 유지한다.                                                    | `crypto.randomUUID()`로 바꾸지 않는다. 테스트·특수 환경은 공개 `generateId` 주입점을 사용한다.                                                                                                                                                          |
-| ESM 배포                    | 소비자 bundler가 패키지를 포함하거나, 브라우저가 올바른 JavaScript MIME/CORS 조건으로 module을 로드해야 한다.                  | 패키지는 ESM 전용이다. 소비자 앱의 번들 결과도 같은 target matrix로 검사한다.                                                                                                                                                                           |
-| React hook 진입점           | 소비자가 선택한 React 버전과 React/프레임워크 산출물도 별도 호환되어야 한다.                                                   | 라이브러리 core 호환과 React host 앱 전체 호환을 각각 테스트한다. React 공식 문서는 브라우저 지원과 오래된 브라우저의 polyfill 필요 가능성을 별도로 설명한다. [React DOM browser support](https://react.dev/reference/react-dom/client#browser-support) |
+| 기능                            | 조건                                                                                                                                                                                         | 대안/검증                                                                                                                                                                                                                                                                     |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `postMessage` payload           | structured clone 가능한 데이터만 보낸다. 함수, symbol, DOM node 등 복제할 수 없는 값은 API 경계에서 허용하지 않는다.                                                                         | 단순 object/array/primitive를 기본 계약으로 삼고, 새 타입은 양쪽 실제 브라우저에서 왕복 테스트한다. [HTML structured data 표준](https://html.spec.whatwg.org/multipage/structured-data.html#structured-cloning)                                                               |
+| `postMessage` transfer list     | concrete transferable 종류별로 matrix 전체 지원을 확인한다. 전송 후 원 소유자가 더 사용할 수 없다는 ownership 이전을 고려한다.                                                               | `ArrayBuffer`, `MessagePort` 등 타입별 테스트를 둔다. 지원을 확인하지 않은 transferable은 복사 가능한 payload로 대체한다. [HTML transferable objects 표준](https://html.spec.whatwg.org/multipage/structured-data.html#transferable-objects)                                  |
+| `postMessage` 호출 형식         | 현재처럼 `message, targetOrigin, transfer` 위치 인자를 사용한다. options-object overload는 별도 검증 전 사용하지 않는다.                                                                     | 명시적 `targetOrigin`을 유지한다. 예외는 opaque origin 모드의 `"*"` 송신뿐이다. [HTML cross-document messaging 표준](https://html.spec.whatwg.org/multipage/web-messaging.html#web-messaging)                                                                                 |
+| opaque origin(`sandbox`) iframe | host `opaqueOrigin: true`에서만 `"*"`로 송신한다. 수신은 `event.origin === "null"`과 `event.source === contentWindow`를 모두 요구하고, source를 비교할 수 없으면 controller를 만들지 않는다. | origin `"null"`은 모든 sandboxed frame이 공유하므로 source 비교를 생략하지 않는다. 최소 버전에서 sandboxed iframe의 ready handshake와 `event.source` identity는 7.3/7.4에서 검증한다. [HTML sandboxing 표준](https://html.spec.whatwg.org/multipage/browsers.html#sandboxing) |
+| Web Crypto                      | request ID는 현재의 `getRandomValues(new Uint8Array(...))` 방식을 유지한다.                                                                                                                  | `crypto.randomUUID()`로 바꾸지 않는다. 테스트·특수 환경은 공개 `generateId` 주입점을 사용한다.                                                                                                                                                                                |
+| ESM 배포                        | 소비자 bundler가 패키지를 포함하거나, 브라우저가 올바른 JavaScript MIME/CORS 조건으로 module을 로드해야 한다.                                                                                | 패키지는 ESM 전용이다. 소비자 앱의 번들 결과도 같은 target matrix로 검사한다.                                                                                                                                                                                                 |
+| React hook 진입점               | 소비자가 선택한 React 버전과 React/프레임워크 산출물도 별도 호환되어야 한다.                                                                                                                 | 라이브러리 core 호환과 React host 앱 전체 호환을 각각 테스트한다. React 공식 문서는 브라우저 지원과 오래된 브라우저의 polyfill 필요 가능성을 별도로 설명한다. [React DOM browser support](https://react.dev/reference/react-dom/client#browser-support)                       |
 
 ### 직접 사용 금지
 
@@ -236,6 +237,7 @@ target은 런타임 API를 polyfill하지 않으므로 성공하더라도 실제
 - notification 양방향 처리
 - timeout, duplicate ready, dispose/terminated 처리
 - 잘못된 origin 및 다른 `event.source` 거부
+- opaque origin(`sandbox="allow-scripts"`) iframe의 ready handshake와 다른 opaque frame 메시지 거부
 - 기본 request ID 생성과 다중 in-flight 응답 매칭
 - 지원한다고 선언한 transferable별 왕복 및 ownership 이전
 
@@ -247,6 +249,7 @@ target은 런타임 API를 polyfill하지 않으므로 성공하더라도 실제
 
 - Chrome 75와 Firefox 67의 iframe navigation 및 콘솔 오류
 - 두 브라우저의 cross-origin `MessageEvent.source`와 transfer 동작
+- 두 브라우저에서 sandboxed iframe의 `event.origin`이 `"null"`이고, 같은 요소의 navigation 뒤에도 `event.source`가 `contentWindow`와 같은지
 - 페이지 unload/navigation 중 dispose와 in-flight request 정리
 
 수동 확인은 자동 테스트가 포착하기 어려운 OS/브라우저/iframe lifecycle 차이를 보완하지만,

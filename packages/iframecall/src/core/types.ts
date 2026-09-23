@@ -109,15 +109,44 @@ export type IframeCallLogger = {
 /** host controller 생성 옵션. */
 export type IframeCallControllerOptions<
   TCommands extends CommandMap<TCommands>,
+> = IframeCallControllerOriginOptions &
+  IframeCallControllerBaseOptions<TCommands>;
+
+/**
+ * controller의 origin 정책 옵션.
+ * 일반 origin iframe은 targetOrigin을 명시하고, sandbox로 격리된 opaque origin("null") iframe은 opaqueOrigin으로 opt-in한다.
+ */
+export type IframeCallControllerOriginOptions =
+  | {
+      /** opaque origin 모드를 끈다. 생략과 같다. */
+      readonly opaqueOrigin?: false;
+
+      /** postMessage targetOrigin. wildcard("*"/"null"/빈 문자열)는 거부한다. */
+      readonly targetOrigin: string;
+
+      /** 수신 시 허용할 origin 목록. 미지정이면 targetOrigin 단일 값을 사용한다. */
+      readonly allowedOrigins?: readonly string[];
+    }
+  | {
+      /**
+       * opaque origin("null") iframe과 통신한다. 송신은 "*"로, 수신은 origin "null"이면서
+       * source가 transport.expectedSource와 같은 메시지만 받는다. expectedSource가 없으면 생성 시 거부한다.
+       */
+      readonly opaqueOrigin: true;
+
+      /** opaque origin 모드에서는 지정할 수 없다. */
+      readonly targetOrigin?: never;
+
+      /** opaque origin 모드에서는 지정할 수 없다. */
+      readonly allowedOrigins?: never;
+    };
+
+/** origin 정책을 제외한 controller 옵션. */
+export type IframeCallControllerBaseOptions<
+  TCommands extends CommandMap<TCommands>,
 > = {
   /** 통신 대상 iframe element. transport 미지정 시 contentWindow 기준 기본 transport를 만든다. */
   readonly iframe: HTMLIFrameElement;
-
-  /** postMessage targetOrigin. wildcard("*"/"null"/빈 문자열)는 거부한다. */
-  readonly targetOrigin: string;
-
-  /** 수신 시 허용할 origin 목록. 미지정이면 targetOrigin 단일 값을 사용한다. */
-  readonly allowedOrigins?: readonly string[];
 
   /** ready 이전 호출 처리 정책. "queue"는 대기열에 쌓고, "reject"는 즉시 거부한다. */
   readonly readyPolicy?: ReadyPolicy;

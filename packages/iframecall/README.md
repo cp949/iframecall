@@ -227,6 +227,12 @@ host                                    iframe
 
 - iframe이 마운트되면 `commands._sendLifecycleReady()`가 `sendLifecycleReady()`를 통해 transport ready 신호를 보낸다.
 - host의 `controller.invoke`는 ready 시점까지 대기한 뒤 전송된다.
+- **iframe `src`는 controller가 생긴 뒤 설정한다.** controller는 생성 시점에 `message` listener를 등록하고, iframe은 ready를 한 번만 보낸다. SSR된 `<iframe src>`처럼 iframe이 host hydration보다 먼저 로드되면 ready가 유실되어 `status`가 `pending`에 머문다. 같은 요소의 `src` 변경은 `contentWindow` identity를 유지하므로 source 검사에 영향이 없다.
+
+  ```tsx
+  <iframe ref={iframeRef} src={controller ? IFRAME_URL : undefined} />
+  ```
+
 - 응답은 Promise로 돌아오며, iframe 측 메서드가 throw하면 host 쪽 Promise는 reject된다.
 - iframe → host 단방향 알림은 `sendNotificationToHost`로 보내고, host 쪽에서 `controller.onNotificationFromIframe`으로 받는다.
 - **라이프사이클 채널과 도메인 채널은 책임이 다르다.** `ready`/`terminated`는 transport 신호 전용이고, 도메인 알림(`status-changed` 등)에는 `"ready"` 같은 lifecycle 의미를 담지 않는다.
@@ -290,7 +296,46 @@ host                                    iframe
 | `targetOrigin`   | `postMessage` 전송 시 사용할 대상 origin  |
 | `allowedOrigins` | 수신 시 허용할 origin 화이트리스트 (배열) |
 
-수신 메시지의 `event.origin`이 화이트리스트에 없으면 무시된다.
+수신 메시지의 `event.origin`이 화이트리스트에 없으면 무시된다. host의 기본 transport는 `event.source`가 대상 iframe의 `contentWindow`인지도 함께 검사한다.
+
+`targetOrigin`에 `""`, `"*"`, `"null"`을 넘기면 `invalid_origin` 에러를 던진다. origin이 `"null"`인 iframe은 아래 opaque origin 모드를 사용한다.
+
+### opaque origin iframe (`sandbox`)
+
+`sandbox="allow-scripts"`처럼 `allow-same-origin` 없이 띄운 iframe은 origin이 `"null"`이라 명시적인 `targetOrigin`으로 메시지를 보낼 수 없다. host에서 `opaqueOrigin: true`로 opt-in한다.
+
+```tsx
+const { iframeRef, controller, status } = useIframeCallController<AppCommands>({
+  opaqueOrigin: true,
+});
+
+return <iframe ref={iframeRef} sandbox="allow-scripts" srcDoc={runnerHtml} />;
+```
+
+이 모드의 동작:
+
+- 송신: 내부적으로 `targetOrigin="*"`로 보낸다. 대상은 해당 iframe의 `contentWindow`뿐이다.
+- 수신: `event.origin === "null"` **그리고** `event.source === contentWindow`일 때만 받는다.
+- 생성 시 거부(`invalid_origin`):
+  - `targetOrigin` 또는 `allowedOrigins`를 함께 지정한 경우. 타입에서도 거부한다.
+  - iframe이 문서에 붙지 않아 `contentWindow`가 없는 경우, 또는 커스텀 `transport`에 `expectedSource`가 없는 경우.
+
+보안 근거:
+
+- **source 비교가 필수인 이유**: origin `"null"`은 다른 사이트의 모든 sandboxed frame이 공유하는 값이다. origin만으로는 대상 iframe과 다른 opaque frame을 구별할 수 없다. 그래서 이 모드는 source를 비교할 수 없는 설정을 생성 시점에 거부한다.
+- **`"*"` 송신 위험**: iframe이 host가 모르는 문서로 navigation하면 그 문서가 command와 인자를 받는다. iframe의 `src`/`srcdoc`는 host가 통제하므로 이 위험을 수용한다. 신뢰할 수 없는 URL로 navigation할 수 있는 iframe에는 이 모드를 쓰지 않는다.
+
+iframe 쪽 runner는 바꿀 필요가 없다. parent(host)는 일반 origin이므로 runner는 지금처럼 `targetOrigin: HOST_ORIGIN`을 명시한다.
+
+### iframe 요소 교체
+
+controller는 iframe 요소 하나에 묶인다. 같은 요소의 `src` 변경은 `contentWindow` identity를 유지하지만, 요소 자체를 새로 만들면 `contentWindow`가 달라진다. 훅은 요소 교체를 감지하지 않으므로, 요소를 교체할 때는 훅을 소유한 컴포넌트를 `key`로 리마운트한다.
+
+```tsx
+<SandboxFrame key={runId} />
+```
+
+리마운트하면 이전 controller가 dispose되어 대기 중인 요청이 `terminated`로 reject되고, 새 controller는 이전 window에서 늦게 도착한 메시지를 source 검사로 버린다.
 
 ## 디버깅
 
@@ -316,6 +361,14 @@ pnpm dev:r19
 
 # React 18 한 쌍 (host: 3302, iframe: 3303)
 pnpm dev:r18
+```
+
+opaque origin 모드 데모는 `http://localhost:3300/opaque`다. iframe-r19 앱을 `sandbox="allow-scripts"`로 띄운다. Next.js dev server는 origin `"null"` 문서의 `/_next` 리소스 요청을 cross-origin으로 차단하므로 iframe 앱은 production 모드로 실행한다.
+
+```sh
+pnpm build
+pnpm --filter iframe-r19 exec next start --port 3301
+pnpm --filter host-r19 dev
 ```
 
 ## 라이선스

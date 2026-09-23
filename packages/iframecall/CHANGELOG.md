@@ -4,6 +4,17 @@
 
 형식은 [Keep a Changelog](https://keepachangelog.com/ko/1.1.0/)을 따르며, 버전 관리는 [Semantic Versioning](https://semver.org/spec/v2.0.0.html)을 준수합니다. 0.x 버전대에서는 호환성이 깨지는 변경도 minor 버전 증가로 처리합니다.
 
+## [Unreleased]
+
+### Added
+
+- host controller와 `useIframeCallController`에 `opaqueOrigin: true` 옵션을 추가했습니다. `sandbox`로 격리된 opaque origin(`"null"`) iframe과 통신합니다. 송신은 `"*"`, 수신은 origin `"null"`과 `contentWindow` source가 모두 일치할 때만 받습니다.
+- `IframeCallControllerOriginOptions` 타입을 export합니다.
+
+### Changed
+
+- `opaqueOrigin` 모드에서 `targetOrigin`/`allowedOrigins`를 함께 지정하거나 transport에 `expectedSource`가 없으면 `invalid_origin`을 던집니다. 기존 모드의 wildcard 거부 동작은 그대로입니다.
+
 ## [0.2.1] - 2026-08-25
 
 ### Added

@@ -28,6 +28,7 @@ export type {
   IframeCallCallOptions,
   IframeCallController,
   IframeCallControllerOptions,
+  IframeCallControllerOriginOptions,
   IframeCallLogger,
   IframeCallNotify,
   IframeCallRequest,

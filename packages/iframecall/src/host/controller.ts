@@ -21,6 +21,7 @@ import type {
   HostDebugEvent,
   IframeCallController,
   IframeCallControllerOptions,
+  IframeCallControllerOriginOptions,
   IframeCallLogger,
   SerializedIframeCallError,
 } from "../core/types.ts";
@@ -48,10 +49,12 @@ export function createIframeCallController<
 >(
   options: IframeCallControllerOptions<TCommands>,
 ): IframeCallController<TCommands, TNotificationsFromIframe> {
-  const targetOrigin = requireTargetOrigin(options.targetOrigin);
-  const allowedOrigins = new Set(options.allowedOrigins ?? [targetOrigin]);
   const transport =
     options.transport ?? createIframeWindowTransport(options.iframe);
+  const { targetOrigin, allowedOrigins, requireSource } = resolveOriginPolicy(
+    options,
+    transport,
+  );
   const generateId = options.generateId ?? createDefaultRequestId;
   const defaultTimeoutMs = options.defaultTimeoutMs ?? 30_000;
   const readyTimeoutMs = options.readyTimeoutMs ?? defaultTimeoutMs;
@@ -98,6 +101,7 @@ export function createIframeCallController<
     createTransportRouter({
       lifecycle,
       allowedOrigins,
+      requireSource,
       transport,
       ledger,
       notifyRegistry,
@@ -196,6 +200,7 @@ function createDefaultRequestId(): string {
 type TransportRouterDeps = {
   readonly lifecycle: ControllerLifecycle;
   readonly allowedOrigins: ReadonlySet<string>;
+  readonly requireSource: boolean;
   readonly transport: IframeCallTransport;
   readonly ledger: InvocationLedger;
   readonly notifyRegistry: NotifyHandlerRegistry;
@@ -211,6 +216,7 @@ function createTransportRouter(deps: TransportRouterDeps) {
   const {
     lifecycle,
     allowedOrigins,
+    requireSource,
     transport,
     ledger,
     notifyRegistry,
@@ -223,6 +229,7 @@ function createTransportRouter(deps: TransportRouterDeps) {
     const inbound = validateInbound(event, {
       allowedOrigins,
       expectedSource: transport.expectedSource,
+      requireSource,
     });
     if (!inbound.accepted) return;
     const parsed = inbound.message;
@@ -351,6 +358,55 @@ function getTerminatedCause(
 /** ready notify가 알려준 protocolVersion이 controller가 지원하는 1과 일치하는지 검사한다. */
 function isSupportedReadyPayload(payload: unknown): boolean {
   return isRecord(payload) && payload.protocolVersion === 1;
+}
+
+/** controller가 송수신에 적용하는 origin 정책. */
+type OriginPolicy = {
+  readonly targetOrigin: string;
+  readonly allowedOrigins: ReadonlySet<string>;
+  readonly requireSource: boolean;
+};
+
+/**
+ * origin 옵션을 송수신 정책으로 정규화한다.
+ * opaque origin 모드는 "null" origin을 다른 sandboxed frame과 구별할 수 없으므로 source 비교를 필수로 강제하고,
+ * 이를 보장할 수 없는 설정(expectedSource 없음, targetOrigin/allowedOrigins 동시 지정)은 invalid_origin으로 거부한다.
+ */
+function resolveOriginPolicy(
+  options: IframeCallControllerOriginOptions,
+  transport: IframeCallTransport,
+): OriginPolicy {
+  if (options.opaqueOrigin !== true) {
+    const targetOrigin = requireTargetOrigin(options.targetOrigin);
+    return {
+      targetOrigin,
+      allowedOrigins: new Set(options.allowedOrigins ?? [targetOrigin]),
+      requireSource: false,
+    };
+  }
+
+  if (
+    options.targetOrigin !== undefined ||
+    options.allowedOrigins !== undefined
+  ) {
+    throw createIframeCallError(
+      "invalid_origin",
+      "opaqueOrigin cannot be combined with targetOrigin or allowedOrigins.",
+    );
+  }
+
+  if (transport.expectedSource === undefined) {
+    throw createIframeCallError(
+      "invalid_origin",
+      "opaqueOrigin requires transport.expectedSource.",
+    );
+  }
+
+  return {
+    targetOrigin: "*",
+    allowedOrigins: new Set(["null"]),
+    requireSource: true,
+  };
 }
 
 /**

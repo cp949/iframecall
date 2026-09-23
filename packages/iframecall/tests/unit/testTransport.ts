@@ -13,13 +13,16 @@ import type {
 /**
  * controller와 runner를 같은 process 안에서 연결한다.
  * 브라우저 DOM 없이 postMessage 흐름과 source/origin 검증을 테스트할 때 사용한다.
+ * iframeOrigin에 "null"을 넘기면 sandbox로 격리된 opaque origin iframe을 모사한다.
  */
-export function createLinkedTransports() {
+export function createLinkedTransports(options?: {
+  readonly iframeOrigin?: string;
+}) {
   const hostSource = { name: "host" };
   const iframeSource = { name: "iframe" };
   const host = createMemoryTransport("https://host.example.com", hostSource);
   const iframe = createMemoryTransport(
-    "https://editor.example.com",
+    options?.iframeOrigin ?? "https://editor.example.com",
     iframeSource,
   );
 
@@ -52,7 +55,7 @@ type MemoryTransportPost = {
 
 /**
  * 상대 transport로 message event를 동기 전달하는 테스트 더블을 만든다.
- * targetOrigin이 상대 origin과 맞지 않으면 브라우저처럼 message를 전달하지 않는다.
+ * targetOrigin이 "*"가 아니고 상대 origin과 맞지 않으면 브라우저처럼 message를 전달하지 않는다.
  */
 function createMemoryTransport(
   origin: string,
@@ -82,7 +85,7 @@ function createMemoryTransport(
         return;
       }
 
-      if (targetOrigin !== peer.origin) {
+      if (targetOrigin !== "*" && targetOrigin !== peer.origin) {
         return;
       }
 

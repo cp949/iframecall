@@ -7,7 +7,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   CommandMap,
   IframeCallController,
-  IframeCallControllerOptions,
+  IframeCallControllerBaseOptions,
+  IframeCallControllerOriginOptions,
   SerializedIframeCallError,
 } from "../core/types.ts";
 import { consoleDebugLogger } from "./consoleDebugLogger.ts";
@@ -30,20 +31,18 @@ export type UseIframeCallControllerDebugLog =
  */
 export type UseIframeCallControllerOptions<
   TCommands extends CommandMap<TCommands>,
-> = {
-  readonly targetOrigin: string;
+> = IframeCallControllerOriginOptions & {
   readonly debugLog?: UseIframeCallControllerDebugLog;
 } & Pick<
-  IframeCallControllerOptions<TCommands>,
-  | "allowedOrigins"
-  | "defaultTimeoutMs"
-  | "generateId"
-  | "logger"
-  | "readyPolicy"
-  | "readyQueueLimit"
-  | "readyTimeoutMs"
-  | "transport"
->;
+    IframeCallControllerBaseOptions<TCommands>,
+    | "defaultTimeoutMs"
+    | "generateId"
+    | "logger"
+    | "readyPolicy"
+    | "readyQueueLimit"
+    | "readyTimeoutMs"
+    | "transport"
+  >;
 
 /** useIframeCallController가 반환하는 handle. mount 전에는 controller가 null이다. */
 export type UseIframeCallControllerResult<
@@ -107,8 +106,7 @@ export function useIframeCallController<
     const opts = optionsRef.current;
     const next = createIframeCallController<TCommands>({
       iframe: iframeEl,
-      targetOrigin: opts.targetOrigin,
-      allowedOrigins: opts.allowedOrigins,
+      ...pickOriginOptions(opts),
       defaultTimeoutMs: opts.defaultTimeoutMs,
       generateId: opts.generateId,
       logger: opts.logger,
@@ -185,4 +183,18 @@ export function useIframeCallController<
     terminationError,
     readyError,
   };
+}
+
+/**
+ * hook 옵션에서 origin 정책 필드만 골라 controller로 넘긴다.
+ * 충돌 검증(opaqueOrigin + targetOrigin 등)은 controller가 담당하므로 값을 걸러내지 않고 그대로 전달한다.
+ */
+function pickOriginOptions(
+  opts: IframeCallControllerOriginOptions,
+): IframeCallControllerOriginOptions {
+  return {
+    opaqueOrigin: opts.opaqueOrigin,
+    targetOrigin: opts.targetOrigin,
+    allowedOrigins: opts.allowedOrigins,
+  } as IframeCallControllerOriginOptions;
 }

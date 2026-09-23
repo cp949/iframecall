@@ -8,6 +8,7 @@
  * - 명시적 command map 기반 controller.invoke가 reserved/instance-only key를 거부한다.
  * - runner.sendNotificationToHost가 명시적 notification map에서 lifecycle 예약 이름(`ready`)을 거부한다.
  * - RM-006 예약 API가 아직 public surface에 노출되지 않았음을 확인한다.
+ * - opaqueOrigin 모드가 targetOrigin/allowedOrigins와 함께 쓰이지 않고, 일반 모드는 targetOrigin을 요구한다.
  */
 import type {
   CommandsConstructor,
@@ -16,6 +17,7 @@ import type {
   IframeHelper,
 } from "../../src/core/types.ts";
 import { createIframeCallController } from "../../src/host/controller.ts";
+import type { UseIframeCallControllerOptions } from "../../src/host/useIframeCallController.tsx";
 
 /**
  * 명시적 command map. iframe 업체가 host에 노출할 prototype method 시그니처만 모은다.
@@ -175,6 +177,39 @@ const _singleGenericController: IframeCallController<DeviceCommands> =
     targetOrigin: "https://editor.example.com",
   });
 void _singleGenericController;
+
+/**
+ * opaqueOrigin 모드는 targetOrigin 없이 생성되고, 일반 모드와 섞이지 않는지 확인한다.
+ * controller와 hook 옵션이 같은 origin 정책 union을 공유한다.
+ */
+const _opaqueController = createIframeCallController<DeviceCommands>({
+  iframe,
+  opaqueOrigin: true,
+});
+void _opaqueController;
+
+// @ts-expect-error opaqueOrigin 모드는 targetOrigin을 받지 않는다.
+createIframeCallController<DeviceCommands>({
+  iframe,
+  opaqueOrigin: true,
+  targetOrigin: "https://editor.example.com",
+});
+
+// @ts-expect-error 일반 모드는 targetOrigin이 필요하다.
+createIframeCallController<DeviceCommands>({ iframe });
+
+const _opaqueHookOptions: UseIframeCallControllerOptions<DeviceCommands> = {
+  opaqueOrigin: true,
+};
+void _opaqueHookOptions;
+
+// @ts-expect-error hook도 opaqueOrigin과 allowedOrigins를 함께 받지 않는다.
+const _conflictingHookOptions: UseIframeCallControllerOptions<DeviceCommands> =
+  {
+    opaqueOrigin: true,
+    allowedOrigins: ["null"],
+  };
+void _conflictingHookOptions;
 
 /**
  * Commands constructor 형태가 새 generic을 그대로 받는지 확인한다.

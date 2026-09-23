@@ -34,8 +34,9 @@ export type IframeCallTransport = {
 
 /**
  * host 측에서 사용하는 transport. 자식 iframe의 contentWindow로 postMessage를 보낸다.
- * `expectedSource`는 contentWindow가 swap되기 전 시점에 캐시되므로,
- * iframe src 변경처럼 contentWindow가 교체되는 경우 transport도 다시 만들어야 한다.
+ * `expectedSource`는 생성 시점의 contentWindow(WindowProxy)를 캐시한다.
+ * 같은 iframe 요소의 src 변경(navigation)은 WindowProxy identity를 유지하지만,
+ * iframe 요소 자체를 교체하면 contentWindow가 달라지므로 transport도 다시 만들어야 한다.
  */
 export function createIframeWindowTransport(
   iframe: HTMLIFrameElement,
