@@ -165,7 +165,7 @@ esbuild의 `target`은 지원하지 않는 **문법**을 가능한 범위에서 
 ### 현재 확인된 격차
 
 - [`package.json`](packages/iframecall/package.json)의 Browserslist와
-  [`tsup.config.ts`](packages/iframecall/tsup.config.ts)의 실제 build target은
+  [`tsdown.config.ts`](packages/iframecall/tsdown.config.ts)의 실제 build target은
   `chrome75`, `firefox67`로 이 문서의 matrix와 일치한다.
 - target 설정의 일치는 지원 완료 증거가 아니다. clean build 후 새로 생성된 모든
   `dist` 파일에서 금지 문법이 제거됐는지 확인하고, Chrome 75와 Firefox 67 실제

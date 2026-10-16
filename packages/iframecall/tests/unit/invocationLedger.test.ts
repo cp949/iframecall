@@ -102,14 +102,24 @@ describe("검증: host invocation ledger", () => {
       onCommandSent() {},
     });
 
-    const queued = ledger.invoke(() => "queued", "sum", [1, 2], { timeoutMs: 0 });
+    const queued = ledger.invoke(() => "queued", "sum", [1, 2], {
+      timeoutMs: 0,
+    });
     ledger.acceptReady();
-    const pending = ledger.invoke(() => "pending", "sum", [3, 4], { timeoutMs: 0 });
+    const pending = ledger.invoke(() => "pending", "sum", [3, 4], {
+      timeoutMs: 0,
+    });
     ledger.terminate((command) =>
       createIframeCallError("terminated", "Iframe terminated.", { command }),
     );
 
-    await expect(queued).rejects.toMatchObject({ code: "terminated", command: "sum" });
-    await expect(pending).rejects.toMatchObject({ code: "terminated", command: "sum" });
+    await expect(queued).rejects.toMatchObject({
+      code: "terminated",
+      command: "sum",
+    });
+    await expect(pending).rejects.toMatchObject({
+      code: "terminated",
+      command: "sum",
+    });
   });
 });

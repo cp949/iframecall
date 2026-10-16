@@ -38,9 +38,7 @@ export type InvocationLedger = {
   ): Promise<unknown>;
   acceptReady(): void;
   settle(response: IframeCallResponse): string | undefined;
-  terminate(
-    buildError: (command: string) => SerializedIframeCallError,
-  ): void;
+  terminate(buildError: (command: string) => SerializedIframeCallError): void;
 };
 
 /** queued와 pending invocation을 단일 lifecycle로 관리하는 host 내부 module을 만든다. */
@@ -94,10 +92,14 @@ export function createInvocationLedger(
       pending.delete(id);
       rejectInvocation(
         invocation,
-        createIframeCallError("invalid_args", "Failed to post command request.", {
-          command: invocation.command,
-          details: error,
-        }),
+        createIframeCallError(
+          "invalid_args",
+          "Failed to post command request.",
+          {
+            command: invocation.command,
+            details: error,
+          },
+        ),
       );
     }
   }
