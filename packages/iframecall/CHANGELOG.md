@@ -6,6 +6,8 @@
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-16
+
 ### Changed
 
 - 빌드 도구를 `tsup`에서 `tsdown`으로 교체했습니다. 공개 export와 `exports` 경로(`./host`, `./iframe`)는 그대로입니다. 공유 chunk 파일명이 `chunk-*.js`에서 `inboundValidation-*.js`로 바뀝니다. 배포물에 sourcemap은 포함하지 않습니다.
