@@ -1,4 +1,3 @@
-import pluginNext from "@next/eslint-plugin-next";
 import eslintReact from "@eslint-react/eslint-plugin";
 import { globalIgnores } from "eslint/config";
 import pluginReactHooks from "eslint-plugin-react-hooks";
@@ -12,15 +11,6 @@ export const nextJsConfig = [
   eslintReact.configs["recommended-typescript"],
   eslintReact.configs["disable-conflict-eslint-plugin-react-hooks"],
   { languageOptions: { globals: { ...globals.serviceworker } } },
-  {
-    plugins: {
-      "@next/next": pluginNext,
-    },
-    rules: {
-      ...pluginNext.configs.recommended.rules,
-      ...pluginNext.configs["core-web-vitals"].rules,
-    },
-  },
   {
     plugins: {
       "react-hooks": pluginReactHooks,
