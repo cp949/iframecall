@@ -232,10 +232,39 @@ host                                    iframe
 - **ready 재요청(ready-query)**: controller는 `message` listener를 등록한 직후 iframe에 `host:ready-query` notify를 한 번 보낸다. 이미 `sendLifecycleReady()`를 호출한 runner는 ready(`requested: true`)로 다시 응답한다. 그래서 SSR된 `<iframe src>`처럼 iframe이 host hydration보다 먼저 로드되어 첫 ready가 유실돼도 controller가 ready에 도달한다. 앱이 아직 ready 전이면 runner는 query를 무시하고, 이후 앱이 보내는 ready로 연결된다.
   - host와 runner가 모두 이 기능을 포함한 버전일 때만 복구된다. 이전 버전 runner는 query를 무시하므로, 그 경우에는 iframe `src`를 controller가 생긴 뒤 설정한다(`src={controller ? IFRAME_URL : undefined}`). 같은 요소의 `src` 변경은 `contentWindow` identity를 유지하므로 source 검사에 영향이 없다.
 - 응답은 Promise로 돌아오며, iframe 측 메서드가 throw하면 host 쪽 Promise는 reject된다.
-- File/Blob/ArrayBuffer 등 구조화 복제가 되는 값을 args와 반환값으로 쓸 수 있다. `transfer` 옵션은 host → iframe 호출에만 적용되고, 응답 값은 복사된다.
 - iframe → host 단방향 알림은 `sendNotificationToHost`로 보내고, host 쪽에서 `controller.onNotificationFromIframe`으로 받는다.
 - **라이프사이클 채널과 도메인 채널은 책임이 다르다.** `ready`/`terminated`는 transport 신호 전용이고, 도메인 알림(`status-changed` 등)에는 `"ready"` 같은 lifecycle 의미를 담지 않는다.
 - prototype에 `$onCommandRun(cmd, args, invoke)`을 두면 모든 command dispatch가 그 함수로 wrap된다. status 토글·로깅·refcount 같은 횡단 관심사를 한 곳에서 처리할 수 있다.
+
+## File/Blob/ArrayBuffer 전달
+
+args와 반환값에는 structured clone이 되는 값을 쓸 수 있다. `File`, `Blob`, `ArrayBuffer`도 포함된다. 객체 안에 중첩해도 된다.
+
+| 값             | 전달 방식                                                                   | `transfer` 옵션                       |
+| -------------- | --------------------------------------------------------------------------- | ------------------------------------- |
+| `File`, `Blob` | 받는 쪽에 새 객체가 만들어진다. `File`은 `name`, `lastModified`도 유지된다. | 사용 불가                             |
+| `ArrayBuffer`  | 기본은 바이트 복사다.                                                       | 소유권 이전, 보낸 쪽 `byteLength`는 0 |
+
+- `transfer`는 host → iframe 호출(`controller.invoke(command, args, { transfer })`)에만 적용된다. iframe → host 응답 값은 항상 복사된다.
+- `File`/`Blob`은 불변이어서, 브라우저는 보통 바이트 전체를 복사하지 않고 원본 데이터를 가리키는 방식으로 넘긴다. 이는 브라우저 구현에 따른 동작이며 이 라이브러리가 보장하지 않는다.
+- 다른 origin의 iframe은 host가 `URL.createObjectURL()`로 만든 `blob:` URL을 읽지 못한다. URL 문자열 대신 `File`/`Blob` 객체를 보내고, 받는 쪽이 자기 origin에서 `URL.createObjectURL()`을 만든다.
+
+```ts
+// host
+await controller.invoke("play", [file]);
+
+// iframe: Commands class의 메서드
+async play(file: File) {
+  const url = URL.createObjectURL(file); // iframe origin에서 만든 URL이라 audio가 읽을 수 있다
+  audio.src = url;
+}
+```
+
+검증 범위:
+
+- 단위 테스트(`tests/unit/binaryPayload.test.ts`)는 Node의 `MessageChannel`로 args, 반환값, `ArrayBuffer` transfer를 확인한다.
+- 실제 브라우저와 다른 origin 조합은 자동 테스트로 확인하지 않았다. `blob:` URL이 다른 origin에서 읽히지 않는 것은 Chromium 153, Firefox 155, WebKit 26.6에서 수동으로 확인한 결과다.
+- `File`/`Blob` 복사 여부와 메모리 사용량은 측정하지 않았다.
 
 ## API 개요
 
