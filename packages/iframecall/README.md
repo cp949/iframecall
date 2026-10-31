@@ -232,6 +232,7 @@ host                                    iframe
 - **ready 재요청(ready-query)**: controller는 `message` listener를 등록한 직후 iframe에 `host:ready-query` notify를 한 번 보낸다. 이미 `sendLifecycleReady()`를 호출한 runner는 ready(`requested: true`)로 다시 응답한다. 그래서 SSR된 `<iframe src>`처럼 iframe이 host hydration보다 먼저 로드되어 첫 ready가 유실돼도 controller가 ready에 도달한다. 앱이 아직 ready 전이면 runner는 query를 무시하고, 이후 앱이 보내는 ready로 연결된다.
   - host와 runner가 모두 이 기능을 포함한 버전일 때만 복구된다. 이전 버전 runner는 query를 무시하므로, 그 경우에는 iframe `src`를 controller가 생긴 뒤 설정한다(`src={controller ? IFRAME_URL : undefined}`). 같은 요소의 `src` 변경은 `contentWindow` identity를 유지하므로 source 검사에 영향이 없다.
 - 응답은 Promise로 돌아오며, iframe 측 메서드가 throw하면 host 쪽 Promise는 reject된다.
+- File/Blob/ArrayBuffer 등 구조화 복제가 되는 값을 args와 반환값으로 쓸 수 있다. `transfer` 옵션은 host → iframe 호출에만 적용되고, 응답 값은 복사된다.
 - iframe → host 단방향 알림은 `sendNotificationToHost`로 보내고, host 쪽에서 `controller.onNotificationFromIframe`으로 받는다.
 - **라이프사이클 채널과 도메인 채널은 책임이 다르다.** `ready`/`terminated`는 transport 신호 전용이고, 도메인 알림(`status-changed` 등)에는 `"ready"` 같은 lifecycle 의미를 담지 않는다.
 - prototype에 `$onCommandRun(cmd, args, invoke)`을 두면 모든 command dispatch가 그 함수로 wrap된다. status 토글·로깅·refcount 같은 횡단 관심사를 한 곳에서 처리할 수 있다.

@@ -50,7 +50,7 @@ export type SerializedIframeCallError = {
 /** Host controller가 ready 이전 호출을 어떻게 다룰지 선택한다. */
 export type ReadyPolicy = "queue" | "reject";
 
-/** command handler 시그니처. args와 return 모두 structured clone 가능해야 한다. */
+/** command handler 시그니처. args와 return 모두 structured clone 가능해야 한다 (File, Blob, ArrayBuffer 포함). */
 export type CommandHandler<
   TArgs extends readonly unknown[] = readonly unknown[],
   TResult = unknown,
