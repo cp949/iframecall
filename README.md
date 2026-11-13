@@ -10,7 +10,6 @@
 ```text
 iframecall/
 ├── packages/
-│   ├── eslint-config/      # 공유 ESLint 설정
 │   ├── iframecall/         # @cp949/iframecall (라이브러리)
 │   └── typescript-config/  # 공유 TypeScript 설정
 └── apps/
@@ -44,7 +43,10 @@ pnpm dev:r18
 # 전체 검증 (lint, build, typecheck, test)
 pnpm verify
 
-# 포맷팅
+# 린트 (oxlint, 설정: .oxlintrc.json)
+pnpm lint
+
+# 포맷팅 (oxfmt, 설정: .oxfmtrc.json)
 pnpm format
 ```
 

@@ -1,0 +1,13 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 80,
+  "ignorePatterns": [
+    "**/.next/**",
+    "**/.turbo/**",
+    "**/.claude/**",
+    "**/.superpowers/**",
+    "**/node_modules/**",
+    "**/dist/**",
+    "pnpm-lock.yaml"
+  ]
+}
