@@ -27,6 +27,8 @@ iframecall/
 
 요구 사항: Node.js `>=22.13.0`, pnpm `11.27.1`.
 
+`typescript`는 `6.0.3`으로 고정한다. 7로 올리면 React 18 앱(`next` 15)의 빌드가 실패한다. 이유와 재시도 조건은 [TRP-0006](./docs/traps/TRP-0006-typescript-7-breaks-next-15-build.md)을 따른다.
+
 ```sh
 # 의존성 설치
 pnpm install

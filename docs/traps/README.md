@@ -9,3 +9,4 @@ iframecall 작업 중 실제로 부딪힌 함정. 파일 하나에 함정 하나
 | [TRP-0003-next-dev-blocks-opaque-iframe.md](TRP-0003-next-dev-blocks-opaque-iframe.md)                             | Next.js dev server가 origin `"null"` 문서의 `/_next` 리소스를 차단                                                                   |
 | [TRP-0004-ready-lost-before-host-subscribe.md](TRP-0004-ready-lost-before-host-subscribe.md)                       | iframe이 host 구독 전에 ready를 보내면 유실되고 controller가 영구 `pending`. ready-query로 해결                                      |
 | [TRP-0005-sandbox-self-navigation-passes-source-check.md](TRP-0005-sandbox-self-navigation-passes-source-check.md) | sandboxed iframe이 자기 자신을 다른 문서로 이동시켜도 origin·source 검사를 통과. source 검사는 요소를 인증할 뿐 문서를 인증하지 않음 |
+| [TRP-0006-typescript-7-breaks-next-15-build.md](TRP-0006-typescript-7-breaks-next-15-build.md)                     | TypeScript 7은 `next` 15(r18 앱)의 `next build`를 실패시킴. `typescript`는 6.0.3 고정                                                |
