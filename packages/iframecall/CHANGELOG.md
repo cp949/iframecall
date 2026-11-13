@@ -6,6 +6,11 @@
 
 ## [Unreleased]
 
+### Changed
+
+- README에 `File`/`Blob`/`ArrayBuffer` 전달 절을 추가했습니다. args와 반환값에 쓸 수 있고, `ArrayBuffer` `transfer`는 host → iframe 호출에만 적용됩니다. `CommandHandler` 타입 주석도 같은 내용으로 갱신했습니다. 런타임 동작은 바뀌지 않습니다.
+- 개발 의존성을 최신화했습니다(`jsdom` 31, `vitest` 5, `tsdown` 0.23.7). 린트·포맷 도구를 `eslint`/`prettier`에서 `oxlint`/`oxfmt`로 교체했습니다. 배포물의 런타임 코드와 peerDependencies(`react`, `@types/react`)는 바뀌지 않습니다.
+
 ## [0.3.1] - 2026-10-16
 
 ### Changed
