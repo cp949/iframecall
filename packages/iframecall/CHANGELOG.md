@@ -6,6 +6,8 @@
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-11-13
+
 ### Changed
 
 - README에 `File`/`Blob`/`ArrayBuffer` 전달 절을 추가했습니다. args와 반환값에 쓸 수 있고, `ArrayBuffer` `transfer`는 host → iframe 호출에만 적용됩니다. `CommandHandler` 타입 주석도 같은 내용으로 갱신했습니다. 런타임 동작은 바뀌지 않습니다.
